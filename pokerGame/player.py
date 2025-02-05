@@ -58,3 +58,6 @@ class Player:
             return community_cards # Add logic for constructing a good hand
     
         return []
+
+    def __str__(self):
+        return f'Player: {self.name} Cards: {self.pocket_cards} Money: {self.money}'

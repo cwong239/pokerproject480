@@ -32,3 +32,10 @@ class Card:
 
     def getSuit(self) -> Suit:
         return self.suit
+    
+    def __repr__(self) -> str:
+        suit_symbols = {Suit.CLUB: "C", Suit.DIAMOND: "D", Suit.HEART: "H", Suit.SPADE: "S"}
+        rank_symbols = {Rank.TWO: "2", Rank.THREE: "3", Rank.FOUR: "4", Rank.FIVE: "5", Rank.SIX: "6", 
+                        Rank.SEVEN: "7", Rank.EIGHT: "8", Rank.NINE: "9", Rank.TEN: "10", Rank.JACK: "J", 
+                        Rank.QUEEN: "Q", Rank.KING: "K", Rank.ACE: "A"}
+        return f"{suit_symbols[self.suit]}{rank_symbols[self.rank]}"
