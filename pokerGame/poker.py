@@ -1,4 +1,3 @@
-print("What")
 from player import Player as game_player
 from card import Card, Suit, Rank
 import random

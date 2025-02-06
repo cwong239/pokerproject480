@@ -1,12 +1,12 @@
-from enum import Enum
+from enum import IntEnum
 
-class Suit(Enum):
+class Suit(IntEnum):
     CLUB = 1
     DIAMOND = 2
     HEART = 3
     SPADE = 4
 
-class Rank(Enum):
+class Rank(IntEnum):
     TWO = 2
     THREE = 3
     FOUR = 4
