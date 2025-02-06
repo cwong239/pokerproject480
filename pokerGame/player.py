@@ -1,4 +1,5 @@
 from card import Card
+from copy import deepcopy
 
 class Player:
     def __init__(self, name : str, money : int) -> None:
@@ -21,7 +22,7 @@ class Player:
         Fold and return cards to dealer
         """
         if self.pocket_cards:
-            old_cards = self.pocket_cards.copy()
+            old_cards = deepcopy(self.pocket_cards)
             self.pocket_cards.clear()
             return old_cards
      
