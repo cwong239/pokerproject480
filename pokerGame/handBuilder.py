@@ -1,5 +1,5 @@
 from card import Card, Rank, Suit
-from enum import IntEnum
+from enum import IntEnum, Enum
 from copy import deepcopy
 
 class HandVal(IntEnum):
@@ -15,7 +15,11 @@ class HandVal(IntEnum):
     STRAIGHT_FLUSH = 9
     # no royal flush since its just a type of straight flush
 
-class buildHand:
+class HandBuilder:
+    """
+    Used to build a full hand (5 cards) using the 2 pocket cards 
+    and 5 community cards
+    """
     def __init__(self, cards : list[Card]) -> None:
         self.cards = cards
         self.same_value : dict[Rank, list[Card]] = {}
@@ -42,7 +46,7 @@ class buildHand:
         value_sorted = sorted(self.cards, key=lambda card: card.getRank().value)
         for i in range(3):
             sequence_found = True
-            for j in range(i, i + 5):
+            for j in range(i, i + 4):
                 if (value_sorted[j].getRank().value + 1 
                    != value_sorted[j + 1].getRank().value):
                     sequence_found = False
@@ -68,7 +72,7 @@ class buildHand:
                     break
             
             if same_suit:
-                return (sequence, HandVal.STRAIGHT_FLUSH)
+                return (deepcopy(sequence), HandVal.STRAIGHT_FLUSH)
         
         return ([], HandVal.NO_HAND)
     
@@ -79,8 +83,9 @@ class buildHand:
         for vals in self.same_value.values():
             if len(vals) == 4:
                 # get another card to complete the hand
-                other_cards = list(set(self.cards) - set(vals))
-                hand = deepcopy(vals).append(other_cards[0])
+                other_cards = [card for card in self.cards if card not in vals]
+                hand = deepcopy(vals)
+                hand.append(other_cards[0])
                 return (hand, HandVal.FOUR_OF_KIND)
         
         return ([], HandVal.NO_HAND)
@@ -122,9 +127,79 @@ class buildHand:
         Return any Straight (five cards in sequential order)
         """
         if self.sequences:
-            return (deepcopy(self.sequences[0], HandVal.STRAIGHT))
+            return (deepcopy(self.sequences[0]), HandVal.STRAIGHT)
     
         return ([], HandVal.NO_HAND)
 
-    # do checks for three of kind, two pairs, pair, and high card
-
+    def checkTOK(self) -> tuple[list[Card], HandVal]:
+        """
+        Return any Three of a Kind (three same value)
+        """
+        for vals in self.same_value.values():
+            if len(vals) == 3:
+                # get two cards to complete the hand
+                other_cards = [card for card in self.cards if card not in vals]
+                #list(set(self.cards) - set(vals))
+                hand = deepcopy(vals)
+                hand.extend(other_cards[:2])
+                return (hand, HandVal.THREE_OF_KIND)
+        
+        return ([], HandVal.NO_HAND)
+    
+    def checkTwoPairs(self) -> tuple[list[Card], HandVal]:
+        """
+        Return any Two Pairs (Two instances of two cards having the same value)
+        """
+        pair1 = []
+        pair2 = []
+        for vals in self.same_value.values():
+            if len(vals) == 2:
+                if not pair1:
+                    pair1 = vals
+                elif not pair2:
+                    pair2 = vals
+                
+            if pair1 and pair2:
+                break
+        
+        if pair1 and pair2:
+            partial_hand = pair1 + pair2
+            # get a card to complete the hand
+            other_cards = [card for card in self.cards if card not in partial_hand]
+            hand = deepcopy(partial_hand)
+            hand.append(other_cards[0])
+            return (hand, HandVal.TWO_PAIRS)
+        
+        return ([], HandVal.NO_HAND)
+    
+    def checkPair(self) -> tuple[list[Card], HandVal]:
+        """
+        Return a Pair (two same value)
+        """
+        for vals in self.same_value.values():
+            if len(vals) == 2:
+                # get three cards to complete the hand
+                other_cards = [card for card in self.cards if card not in vals]
+                hand = deepcopy(vals)
+                hand.extend(other_cards[:3])
+                return (hand, HandVal.PAIR)
+        
+        return ([], HandVal.NO_HAND)
+                
+    def checkHighCard(self) -> tuple[list[Card], HandVal]:
+        """
+        Return a High Card (highest val card + 4 randoms)
+        """
+        highest_val = Rank.TWO
+        high_card = None
+        for card in self.cards:
+            if card.getRank().value >= highest_val.value:
+                highest_val = card.getRank()
+                high_card = card
+        
+        # get four cards to compelte the hand
+        other_cards = [card for card in self.cards if card != high_card]
+        hand = [high_card]
+        hand.extend(other_cards[:4])
+        return (hand, HandVal.HIGH_CARD)
+        

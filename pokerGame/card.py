@@ -39,3 +39,10 @@ class Card:
                         Rank.SEVEN: "7", Rank.EIGHT: "8", Rank.NINE: "9", Rank.TEN: "10", Rank.JACK: "J", 
                         Rank.QUEEN: "Q", Rank.KING: "K", Rank.ACE: "A"}
         return f"{suit_symbols[self.suit]}{rank_symbols[self.rank]}"
+    
+    def __eq__(self, other):
+        if isinstance(other, Card):
+            return (self.getRank().value == other.getRank().value 
+                    and self.getSuit().value == other.getSuit().value)
+        
+        return False
