@@ -2,9 +2,11 @@ from card import Card
 from copy import deepcopy
 from handStrategy import HandStrat
 from handBuilder import HandVal
+from betStrategy import BetStrat, BetType
 
 class Player:
-    def __init__(self, name : str, money : int, strat : HandStrat) -> None:
+    def __init__(self, name : str, money : int, 
+                 hand_strat : HandStrat, bet_strat : BetStrat) -> None:
         """
         Creates a player in a game of Texas Hold 'em. Can be a bot or human
         """
@@ -12,17 +14,45 @@ class Player:
         self.pocket_cards : list[Card] = []
         self.bet = 0
         self.name = name
-        self.strat = strat
+        self.hand_strat = hand_strat
+        self.bet_strat = bet_strat
     
     def getName(self) -> str:
         return self.name
     
     def getMoney(self) -> int:
         return self.money
-     
-    def fold(self) -> list[Card]:
+
+    def getBet(self) -> int:
+        return self.bet
+    
+    def makeBet(self, small_blind : int, big_blind : int, 
+                community_cards : list[Card]) -> tuple[BetType, list[Card] | int]:
         """
-        Fold and return cards to dealer
+        Bet, Call, Fold, Check, or Raise based on betting strategy, blinds, and shown
+        community cards
+
+        Returns a tuple with the bet type and the bet amount (fold returns the pocket hand)
+        """
+        all_cards = deepcopy(self.pocket_cards)
+        all_cards.extend(community_cards)
+
+        bet_result = self.bet_strat.determineBet(small_blind, big_blind, all_cards)
+        
+        if bet_result[0] == BetType.FOLD:
+            return (BetType.FOLD, self._fold())
+        elif bet_result[0] == BetType.BET:
+            return (BetType.BET, self._bet(bet_result[1]))
+        elif bet_result[0] == BetType.CHECK:
+            return (BetType.CHECK, self._check())
+        elif bet_result[0] == BetType.CALL:
+            return (BetType.CALL, self._call(bet_result[1]))
+        else: # only bet type left is raise
+            return (BetType.RAISE, self._raiseBet(bet_result[1]))
+     
+    def _fold(self) -> list[Card]:
+        """
+        Fold and give up pocket cards
         """
         if not self.pocket_cards:
             assert Exception("Can't fold if there are no pocket cards!")
@@ -31,34 +61,32 @@ class Player:
         self.pocket_cards.clear()
         return old_cards
      
-    def bet(self, amount : int) -> int:
+    def _bet(self, amount : int) -> int:
         """
         Bet some amount
         """
         self.bet = amount
         return self.bet
     
-    def getBet(self) -> int:
-        return self.bet
     
-    def check(self) -> int:
+    def _check(self) -> int:
         """
         Bet of zero
         """
-        return self.bet(0)
+        return self._bet(0)
     
-    def raiseBet(self, amount : int) -> int:
+    def _raiseBet(self, amount : int) -> int:
         """
         Raise bet, returns amount raised
         """
         self.bet += amount
         return amount
     
-    def call(self, amount : int) -> int:
+    def _call(self, amount : int) -> int:
         """
         Match the bet of another player
         """
-        return self.bet(amount)
+        return self._bet(amount)
     
     def recievePocket(self, card1 : Card, card2 : Card) -> None:
         """
@@ -78,8 +106,8 @@ class Player:
         all_cards = deepcopy(self.pocket_cards)
         all_cards.extend(community_cards)
 
-        self.strat.takeInCards(all_cards)
-        return self.strat.execute()
+        self.hand_strat.takeInCards(all_cards)
+        return self.hand_strat.execute()
 
     def __str__(self):
         return f'Player: {self.name} Cards: {self.pocket_cards} Money: {self.money}'

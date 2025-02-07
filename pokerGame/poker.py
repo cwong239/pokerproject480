@@ -1,7 +1,8 @@
 from player import Player as game_player
 from card import Card, Suit, Rank
-from handStrategy import WorstHandStrat, BestHandStrat
-import random
+from handStrategy import BestHandStrat
+from betStrategy import BigBlindCallStrat
+from random import shuffle
 from collections import deque
 
 class Game:
@@ -11,7 +12,9 @@ class Game:
         """
         if player_count > 22 or player_count < 1:
             raise
-        self.players = [game_player("player " + str(x), "800", BestHandStrat()) for x in range(player_count)]
+        self.players = [game_player("player " + str(x), "800", 
+                                    BestHandStrat(), BigBlindCallStrat()) 
+                        for x in range(player_count)]
         self.game_state = 0
         self.deck = deque([Card(rank, suit) for suit in Suit for rank in Rank])
         self.shuffle_deck()
@@ -30,7 +33,7 @@ class Game:
         """
         Shuffles the deck
         """
-        random.shuffle(self.deck)
+        shuffle(self.deck)
 
     def print_deck(self) -> None:
         print("field: ")
@@ -84,6 +87,14 @@ g.print_field()
 g.river()
 g.print_field()
 
+# example betting
+for player in g.players:
+    result = player.makeBet(1, 10, g.field)
+    print("Player: {} does a {} of {}".format(player.getName(), 
+                                              result[0].name, 
+                                              result[1]))
+
+# example hand construction
 for player in g.players:
     result = player.constructHand(g.field)
     print("Player: {} created hand {} of type {}".format(player.getName(),
