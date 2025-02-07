@@ -19,6 +19,12 @@ class Game:
         self.player_action = ["check" for x in range(player_count)]
         self.moves = ("check", "bet", "fold")
         self.field = []
+        self.current_players = []
+        self.reset_current_players()
+        self.current_bet = self.current_turn = self.total_pot = self.current_pot = self.max_bet = 0
+
+        self.big_blind = {"bet": 0, "index": 1}
+        self.small_blind = {"bet": 0, "index": 0}
 
     def shuffle_deck(self) -> None:
         """
@@ -55,6 +61,17 @@ class Game:
 
     def burn(self) -> None:
         self.deck.popleft()
+
+    def reset_current_players(self) -> None:
+        self.current_players = [(player, 0) for player in self.players]
+
+    def fold(self, index) -> None:
+        self.current_players.pop(index)
+
+    def loss(self, remove_players: list[int]) -> None:
+        reversed_sorted = sorted(remove_players, key=lambda x: x, reverse=True)
+        for player in reversed_sorted:
+            self.players.pop(player)
 
 g = Game(5)
 g.print_deck()
