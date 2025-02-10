@@ -12,7 +12,7 @@ class Game:
         """
         if player_count > 22 or player_count < 1:
             raise
-        self.players = [game_player("player " + str(x), "800", 
+        self.players = [game_player("player " + str(x), 800, 
                                     BestHandStrat(), BigBlindCallStrat()) 
                         for x in range(player_count)]
         self.game_state = 0
