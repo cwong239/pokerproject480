@@ -66,6 +66,7 @@ class Player:
         Bet some amount
         """
         self.bet = amount
+        self.money -= amount
         return self.bet
     
     
