@@ -8,95 +8,110 @@ from collections import deque
 class Game:
     def __init__(self, player_count: int):
         """
-        Creates a game and initalizes players with hands.
+        Creates a game and initializes players with hands.
         """
         if player_count > 22 or player_count < 1:
-            raise
+            raise ValueError("Player count must be between 1 and 22")
+        
         self.players = [game_player("player " + str(x), 800, 
                                     BestHandStrat(), BigBlindCallStrat()) 
                         for x in range(player_count)]
         self.game_state = 0
+        self.moves = ("check", "bet", "fold")
+        self.blind_position = 0
+        self.reset_game()
+    
+    def reset_game(self):
+        """
+        Resets the game state for a new round while keeping player balances.
+        """
         self.deck = deque([Card(rank, suit) for suit in Suit for rank in Rank])
         self.shuffle_deck()
-        self.deal()
-        self.player_action = ["check" for x in range(player_count)]
-        self.moves = ("check", "bet", "fold")
         self.field = []
-        self.current_players = []
-        self.reset_current_players()
+        self.current_players = [(player, 0) for player in self.players if player.money > 0]
         self.current_bet = self.current_turn = self.total_pot = self.current_pot = self.max_bet = 0
-
-        self.big_blind = {"bet": 0, "index": 1}
-        self.small_blind = {"bet": 0, "index": 0}
-
+        
+        # Rotate blinds
+        self.small_blind = {"bet": 0, "index": self.blind_position % len(self.players)}
+        self.big_blind = {"bet": 0, "index": (self.blind_position + 1) % len(self.players)}
+        self.blind_position = (self.blind_position + 1) % len(self.players)
+        
+        # Set the starting turn to the big blind player
+        self.current_turn = self.big_blind["index"]
+        
+        self.deal()
+    
     def shuffle_deck(self) -> None:
-        """
-        Shuffles the deck
-        """
+        """Shuffles the deck."""
         shuffle(self.deck)
-
-    def print_deck(self) -> None:
-        print("field: ")
-        print(", ".join(str(card) for card in self.deck))
-
-    def print_field(self) -> None:
-        print(", ".join(str(card) for card in self.field))
-
+    
     def deal(self) -> None:
-        """
-        Deals the starting hand out to players
-        """
+        """Deals the starting hand out to players."""
         for player in self.players:
-            player.recievePocket(self.deck.popleft(), self.deck.popleft())
-            print(player)
+            if player.money > 0:
+                player.recievePocket(self.deck.popleft(), self.deck.popleft())
     
     def flop(self) -> None:
         self.burn()
-        self.field.extend([self.deck.popleft() for x in range(3)])
-
+        self.field.extend([self.deck.popleft() for _ in range(3)])
+    
     def turn(self) -> None:
         self.burn()
         self.field.append(self.deck.popleft())
-
+    
     def river(self) -> None:
         self.burn()
         self.field.append(self.deck.popleft())
-
+    
     def burn(self) -> None:
         self.deck.popleft()
-
-    def reset_current_players(self) -> None:
-        self.current_players = [(player, 0) for player in self.players]
-
-    def fold(self, index) -> None:
+    
+    def fold(self, index):
+        print(f"{self.current_players[index][0].getName()} has folded.")
         self.current_players.pop(index)
+        self.current_turn %= len(self.current_players) if self.current_players else 0
+    
+    def play_turns(self):
+        while len(self.current_players) > 1:
+            player, _ = self.current_players[self.current_turn]
+            action = self.prompt_player_action(player)
 
-    def loss(self, remove_players: list[int]) -> None:
-        reversed_sorted = sorted(remove_players, key=lambda x: x, reverse=True)
-        for player in reversed_sorted:
-            self.players.pop(player)
+            if action == "fold":
+                self.fold(self.current_turn)
+            elif action == "bet":
+                bet_amount = int(input(f"{player.getName()}, enter bet amount: "))
+                player.makeBet(1, bet_amount, self.field)
+                self.current_bet = bet_amount
+            
+            self.current_turn = (self.current_turn + 1) % len(self.current_players)
+            
+            if len(self.current_players) == 1:
+                print(f"{self.current_players[0][0].getName()} wins the round!")
+                break
+    
+    def prompt_player_action(self, player):
+        while True:
+            action = input(f"{player.getName()}, (check, bet, fold): ").strip().lower()
+            if action in self.moves:
+                return action
+            print("Invalid choice, try again.")
+    
+    def play_game(self):
+        """
+        Plays multiple games until the user inputs 'END'.
+        """
+        while True:
+            print("Starting a new game!")
+            self.reset_game()
+            self.flop()
+            self.turn()
+            self.river()
+            self.play_turns()
+            
+            if input("Type 'END' to stop playing or press Enter to continue: ").strip().upper() == "END":
+                print("Ending game session.")
+                break
 
+# Start game session
 g = Game(5)
-g.print_deck()
-g.shuffle_deck()
-g.print_deck()
-g.flop()
-g.print_field()
-g.turn()
-g.print_field()
-g.river()
-g.print_field()
-
-# example betting
-for player in g.players:
-    result = player.makeBet(1, 10, g.field)
-    print("Player: {} does a {} of {}".format(player.getName(), 
-                                              result[0].name, 
-                                              result[1]))
-
-# example hand construction
-for player in g.players:
-    result = player.constructHand(g.field)
-    print("Player: {} created hand {} of type {}".format(player.getName(),
-                                                          result[0],
-                                                          result[1].name))
+g.play_game()
