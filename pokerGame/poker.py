@@ -19,6 +19,8 @@ class Game:
         self.game_state = 0
         self.moves = ("check", "bet", "fold")
         self.blind_position = 0
+        self.opponentFold = {player: 0.0 for player in self.players}
+        self.rounds = 0
         self.reset_game()
     
     def reset_game(self):
@@ -68,7 +70,10 @@ class Game:
     
     def fold(self, index):
         print(f"{self.current_players[index][0].getName()} has folded.")
+        player = self.current_players[index][0]
         self.current_players.pop(index)
+        if player in self.opponentFold:
+            self.opponentFold[player] += 1 
         self.current_turn %= len(self.current_players) if self.current_players else 0
     
     def play_turns(self):
