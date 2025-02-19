@@ -16,7 +16,7 @@ class BetStrat:
         pass
 
     def determineBet(self, small_blind : int, big_blind : int, 
-                     current_cards : list[Card]) -> tuple[BetType, int]:
+                     pocket_cards : list[Card], community_cards : list[Card]) -> tuple[BetType, int]:
         """
         Determine what the bet will be based off the blinds 
         and the current round of betting.
@@ -26,10 +26,13 @@ class BetStrat:
         if small_blind < 0 or big_blind < 0:
             raise Exception("Invalid blind values given!")
     
-        if len(current_cards) < 2:
+        if len(pocket_cards) != 2:
             # Can tell game state based on current cards (community + pocket)
             # 2 = pre flop, 5 = flop, 6 = turn, 7 = river
-            raise Exception("Can't bet without recieving pocket cards first!")
+            raise Exception("Can't bet before pocket cards are dealt!")
+    
+        if len(community_cards) > 5:
+            raise Exception("Can't have more than 5 community cards")
     
         return (BetType.FOLD, -1)
 
@@ -41,8 +44,8 @@ class BigBlindCallStrat(BetStrat):
     def __init__(self):
         super().__init__()
     
-    def determineBet(self, small_blind, big_blind, current_cards):
-        super().determineBet(small_blind, big_blind, current_cards)
+    def determineBet(self, small_blind, big_blind, pocket_cards, community_cards):
+        super().determineBet(small_blind, big_blind, pocket_cards, community_cards)
 
         return (BetType.CALL, big_blind)
 

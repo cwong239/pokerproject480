@@ -34,10 +34,10 @@ class Player:
 
         Returns a tuple with the bet type and the bet amount (fold returns the pocket hand)
         """
-        all_cards = deepcopy(self.pocket_cards)
-        all_cards.extend(community_cards)
 
-        bet_result = self.bet_strat.determineBet(small_blind, big_blind, all_cards)
+        bet_result = self.bet_strat.determineBet(small_blind, big_blind, 
+                                                 deepcopy(self.pocket_cards), 
+                                                 deepcopy(community_cards))
         
         if bet_result[0] == BetType.FOLD:
             return (BetType.FOLD, self._fold())
