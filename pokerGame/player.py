@@ -26,7 +26,18 @@ class Player:
     def getBet(self) -> int:
         return self.bet
     
-    def makeBet(self, small_blind : int, big_blind : int, 
+    def clearBet(self) -> None:
+        self.bet = 0
+        return
+    
+    def recievePot(self, pot : int) -> None:
+        if pot <= 0:
+            raise Exception("Invalid pot amount!")
+        
+        self.money += pot
+        return
+    
+    def makeBet(self, small_blind : int, big_blind : int, current_bet : int,
                 community_cards : list[Card]) -> tuple[BetType, list[Card] | int]:
         """
         Bet, Call, Fold, Check, or Raise based on betting strategy, blinds, and shown
@@ -35,16 +46,19 @@ class Player:
         Returns a tuple with the bet type and the bet amount (fold returns the pocket hand)
         """
 
-        bet_result = self.bet_strat.determineBet(small_blind, big_blind, 
+        bet_result = self.bet_strat.determineBet(small_blind, big_blind,
+                                                 current_bet,
                                                  deepcopy(self.pocket_cards), 
-                                                 deepcopy(community_cards))
+                                                 deepcopy(community_cards),
+                                                 self.name)
         
-        if bet_result[0] == BetType.FOLD:
+        if bet_result[0] == BetType.CHECK:
+            return (BetType.CHECK, self._check())
+        elif bet_result[0] == BetType.FOLD or self.money == 0:
+            # Can't do other bet types without money
             return (BetType.FOLD, self._fold())
         elif bet_result[0] == BetType.BET:
             return (BetType.BET, self._bet(bet_result[1]))
-        elif bet_result[0] == BetType.CHECK:
-            return (BetType.CHECK, self._check())
         elif bet_result[0] == BetType.CALL:
             return (BetType.CALL, self._call(bet_result[1]))
         else: # only bet type left is raise
@@ -65,29 +79,41 @@ class Player:
         """
         Bet some amount
         """
-        self.bet = amount
-        self.money -= amount
+        bet_amount = amount
+        if self.money < amount:
+            bet_amount = self.money
+
+        self.bet = bet_amount
+        self.money -= bet_amount
         return self.bet
     
     
     def _check(self) -> int:
         """
-        Bet of zero
+        Bet/raise by zero, do nothing
         """
-        return self._bet(0)
+        return 0
     
     def _raiseBet(self, amount : int) -> int:
         """
-        Raise bet, returns amount raised
+        Raise bet by amount, return total bet
         """
-        self.bet += amount
-        return amount
+        raise_amount = amount
+        if self.money < amount:
+            raise_amount = self.money
+        
+        self.bet += raise_amount
+        self.money -= raise_amount
+        return self.bet
     
     def _call(self, amount : int) -> int:
         """
-        Match the bet of another player
+        Match the bet of another player, return total bet
         """
-        return self._bet(amount)
+        if self.bet > amount:
+            raise Exception("Can't call to less than current bet!")
+
+        return self._raiseBet(amount - self.bet)
     
     def recievePocket(self, card1 : Card, card2 : Card) -> None:
         """

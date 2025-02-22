@@ -1,5 +1,8 @@
 from card import Card
 from enum import IntEnum
+from oddsForPot import potOdds
+from probabilitySim import ProbabilitySim
+from copy import deepcopy
 
 class BetType(IntEnum):
     FOLD = 0
@@ -15,16 +18,69 @@ class BetStrat:
     def __init__(self):
         pass
 
+    @staticmethod
+    def averageHandValue(hand_probs : list[float]) -> float:
+        """
+        Get an average of the possible hand values, for comparison
+        """
+        value = 0
+        for i in range(1, len(hand_probs)):
+            value += i * hand_probs[i]
+        
+        return value
+
+    @staticmethod
+    def highestHandProb(hand_probs : list[float]) -> float:
+        """
+        Get the highest hand probability
+        """
+        highest_prob = 0
+        for prob in hand_probs:
+            if prob > highest_prob:
+                highest_prob = prob
+        
+        return highest_prob
+    
+    def probsToBet(self, pocket_cards : list[Card], community_cards : list[Card], 
+                   current_bet : int, value_threshold : int, big_blind : int,
+                   cutoff : int = 0) -> tuple[BetType, int]:
+        self_cards = deepcopy(pocket_cards)
+        self_cards.extend(community_cards)
+        self_chances = ProbabilitySim.getProbs(self_cards, cutoff)
+        opponent_chances = ProbabilitySim.getProbs(community_cards, cutoff)
+
+        self_hand_value = BetStrat.averageHandValue(self_chances)
+        opponent_hand_value = BetStrat.averageHandValue(opponent_chances)
+
+        self_highest_prob = BetStrat.highestHandProb(self_chances)
+
+        if current_bet == 0:
+            # no bets/only checks
+            if opponent_hand_value - self_hand_value > value_threshold:
+                return (BetType.CHECK, 0)
+            else:
+                return (BetType.RAISE, big_blind)
+        else:
+            # previous player has made a bet
+            if ((opponent_hand_value - self_hand_value <= value_threshold) 
+                and (self_highest_prob >= potOdds().potEquity(current_bet))):
+                return (BetType.CALL, current_bet)
+            else:
+                return (BetType.FOLD, 0)
+
     def determineBet(self, small_blind : int, big_blind : int, 
-                     pocket_cards : list[Card], community_cards : list[Card]) -> tuple[BetType, int]:
+                     current_bet : int,
+                     pocket_cards : list[Card], 
+                     community_cards : list[Card],
+                     player_name : str) -> tuple[BetType, int]:
         """
         Determine what the bet will be based off the blinds 
         and the current round of betting.
 
         Returns bet type and amount of bet (if applicable)
         """
-        if small_blind < 0 or big_blind < 0:
-            raise Exception("Invalid blind values given!")
+        if small_blind < 0 or big_blind < 0 or current_bet < 0:
+            raise Exception("Invalid blind/bet values given!")
     
         if len(pocket_cards) != 2:
             # Can tell game state based on current cards (community + pocket)
@@ -33,6 +89,9 @@ class BetStrat:
     
         if len(community_cards) > 5:
             raise Exception("Can't have more than 5 community cards")
+    
+        if player_name is None:
+            raise Exception("Player must have a name!")
     
         return (BetType.FOLD, -1)
 
@@ -44,9 +103,84 @@ class BigBlindCallStrat(BetStrat):
     def __init__(self):
         super().__init__()
     
-    def determineBet(self, small_blind, big_blind, pocket_cards, community_cards):
-        super().determineBet(small_blind, big_blind, pocket_cards, community_cards)
+    def determineBet(self, small_blind, big_blind, current_bet, 
+                     pocket_cards, community_cards, player_name):
+        super().determineBet(small_blind, big_blind, current_bet, 
+                                    pocket_cards, 
+                                    community_cards,
+                                    player_name)
 
         return (BetType.CALL, big_blind)
 
 # TODO: implement custom betting strategy for AI
+class ArguablyOptimalStrat(BetStrat):
+    """
+    Considers hand chances for self and opponent as well as 
+    pot equity to determine bet
+
+    Assumptions: Limit Texas Hold'Em rules for betting simplicity
+    """
+    def __init__(self):
+        super().__init__()
+    
+    def determineBet(self, small_blind, big_blind, current_bet, 
+                     pocket_cards, community_cards, player_name) -> tuple[BetType, int]:
+        super().determineBet(small_blind, big_blind, current_bet, 
+                             pocket_cards, community_cards, player_name)
+        
+        sim_cutoff = 500000 # arbitrary cutoff for number of hands to simulate, bigger the better but slower
+        value_threshold = 1 # acceptable difference in average hand values
+        
+        if current_bet != 0:
+            if potOdds().autoProfit(current_bet, player_name):
+                # auto win, so raise to the big blind
+                return (BetType.RAISE, big_blind)
+        
+        if len(community_cards) == 0:
+            # pre-flop, raise to big blind
+            return self.probsToBet(pocket_cards, community_cards, 
+                                   current_bet, value_threshold, 
+                                   big_blind, sim_cutoff)
+        elif len(community_cards) == 3:
+            # post-flop, raise to big blind
+            return self.probsToBet(pocket_cards, community_cards,
+                                   current_bet, value_threshold,
+                                   big_blind, sim_cutoff)
+        elif len(community_cards) == 4:
+            # turn, raise to twice big blind
+            return self.probsToBet(pocket_cards, community_cards,
+                                   current_bet, value_threshold,
+                                   big_blind * 2)
+        else:
+            # river, raise to twice big blind
+            return self.probsToBet(pocket_cards, community_cards,
+                                   current_bet, value_threshold,
+                                   big_blind * 2)
+
+if __name__ == "__main__":
+    from poker import Game
+    game = Game(5)
+    player = game.current_players[0][0]
+    game.deal()
+    bet = player.makeBet(1, 2, 0, game.field)
+    print("Pre flop bet: {}".format(bet))
+
+    if bet[0] != BetType.FOLD:
+        game.flop()
+        game.pot = 10
+        bet = player.makeBet(1, 2, 2, game.field)
+        print("Post flop bet: {}".format(bet))
+
+        if bet[0] != BetType.FOLD:
+            game.turn()
+            game.pot = 20
+            bet = player.makeBet(1, 2, 4, game.field)
+            print("Turn bet: {}".format(bet))
+            
+            if bet[0] != BetType.FOLD:
+                game.river()
+                game.pot = 30
+                bet = player.makeBet(1, 2, 6, game.field)
+                print("River bet: {}".format(bet))
+    
+    print("End of betting")

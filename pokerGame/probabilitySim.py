@@ -8,6 +8,7 @@ class ProbabilitySim:
     Runs a simulation to get card hand probabilities
     """
     DECK = [Card(rank, suit) for suit in Suit for rank in Rank]
+    NO_CARD_PROBS = [0, 0.174, 0.438, 0.235, 0.0483, 0.0462, 0.0303, 0.026, 0.00168, 0.000311]
 
     @staticmethod
     def getProbs(cards : list[Card], cutoff : int = 0) -> list[float]:
@@ -19,8 +20,12 @@ class ProbabilitySim:
         simulations will take to long otherwise. Will result in a less accurate
         probability prediction
         """
-        if len(cards) < 2 or len(cards) > 7:
+        if len(cards) > 7:
             raise Exception("Invalid number of cards given!")
+        
+        if len(cards) == 0:
+            # can just use probs with no cards
+            return ProbabilitySim.NO_CARD_PROBS
         
         # index 0 tracks number of 7 card combinations, 1-9 measures the number
         # of times each hand appears (1 = High card hand, 9 = straigth flush)
@@ -65,6 +70,12 @@ if __name__ == "__main__":
     probs = ProbabilitySim.getProbs(current_hand, pre_flop_cutoff)
     for hand in HandVal:
         print("Probability of {} being best is {:.3f}".format(hand.name, probs[hand.value]))
+    
+    value = 0
+    for i in range(1, len(probs)):
+        value += i * probs[i]
+    
+    print("Average hand value of {}".format(value))
 
     current_hand = (current_hand + sample([card for card in ProbabilitySim.DECK 
                                            if card not in current_hand],3))
