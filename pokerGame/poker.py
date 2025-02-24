@@ -139,7 +139,7 @@ class Game:
                     except ValueError:
                         print("Invalid amount. Please enter a number.")
                 
-                player.makeBet(1, bet_amount, self.field)
+                player.makeBet(1, bet_amount, self.current_bet, self.field)
                 self.current_bet = bet_amount
                 self.max_bet = max(self.max_bet, bet_amount)
                 players_acted = {p[0]: False for p in self.current_players}  
