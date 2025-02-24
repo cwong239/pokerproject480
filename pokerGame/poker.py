@@ -1,21 +1,12 @@
 from player import Player as game_player
 from card import Card, Suit, Rank
 from handStrategy import BestHandStrat
-from betStrategy import BigBlindCallStrat, ArguablyOptimalStrat
+from betStrategy import BigBlindCallStrat
 from random import shuffle
 from collections import deque
 from betStrategy import BetType
 
 class Game:
-    INSTANCE = None
-
-    @staticmethod
-    def getInstance():
-        if Game.INSTANCE is None:
-            raise Exception("Can't get Game data if there is no Game!")
-    
-        return Game.INSTANCE
-
     def __init__(self, player_count: int):
         """
         Creates a game and initializes players with hands.
@@ -24,19 +15,14 @@ class Game:
             raise ValueError("Player count must be between 1 and 22")
         
         self.players = [game_player("player " + str(x), 800, 
-                                    BestHandStrat(), ArguablyOptimalStrat()) 
+                                    BestHandStrat(), BigBlindCallStrat()) 
                         for x in range(player_count)]
         self.game_state = 0
         self.moves = ("check", "bet", "fold")
         self.blind_position = 0
         self.opponentFold = {player: 0.0 for player in self.players}
         self.rounds = 0
-        self.pot = 0
         self.reset_game()
-        Game.INSTANCE = self
-    
-    def getPot(self) -> int:
-        return self.pot
     
     def reset_game(self):
         """
@@ -46,7 +32,7 @@ class Game:
         self.shuffle_deck()
         self.field = []
         self.current_players = [(player, 0) for player in self.players if player.money > 0]
-        self.current_bet = self.current_turn = self.pot = self.max_bet = 0
+        self.current_bet = self.current_turn = self.total_pot = self.current_pot = self.max_bet = 0
 
         if len(self.current_players) < 2:
             return
@@ -153,13 +139,10 @@ class Game:
                     except ValueError:
                         print("Invalid amount. Please enter a number.")
                 
-                player.makeBet(1, bet_amount * 2, bet_amount, self.field)
+                player.makeBet(1, bet_amount, self.field)
                 self.current_bet = bet_amount
                 self.max_bet = max(self.max_bet, bet_amount)
-                players_acted = {p[0]: False for p in self.current_players}
-
-                #update pot
-                self.pot = sum(player.getBet() for player, _ in self.current_players) 
+                players_acted = {p[0]: False for p in self.current_players}  
 
             players_acted[player] = True
             self.current_turn = (self.current_turn + 1) % len(self.current_players)  # Rotate 
@@ -238,5 +221,5 @@ class Game:
 
 
 # Start game session
-# g = Game(5)
-# g.play_game()
+g = Game(5)
+g.play_game()
