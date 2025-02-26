@@ -291,16 +291,14 @@ class Game:
 
         print("\n--- Showdown ---")
         
-        best_player = None
-        best_cards = None  
+        best_player : game_player = None
+        best_cards : int= None  
         
         for player in self.current_players:
             pocket_cards = player.pocket_cards  
             print(f"{player.getName()} shows: {pocket_cards[0]}, {pocket_cards[1]}")
             
-            if best_cards is None or self.compare_hands(pocket_cards, best_cards) > 0:
-                best_cards = pocket_cards
-                best_player = player
+            player_hand = player.constructHand(self.field)
 
         print(f"\n{best_player.getName()} wins with the strongest cards.")
         best_player.money += self.total_pot
