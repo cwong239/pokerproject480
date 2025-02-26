@@ -16,6 +16,7 @@ class Player:
         self.name = name
         self.hand_strat = hand_strat
         self.bet_strat = bet_strat
+        self.is_agent = False
     
     def getName(self) -> str:
         return self.name
@@ -36,6 +37,15 @@ class Player:
         
         self.money += pot
         return
+    
+    def makeBetManual(self, bet_amount: int) -> bool:
+        """
+        Manually makes a bet
+        """
+        if bet_amount > self.getMoney():
+            return False
+        self.money-=bet_amount
+        return True
     
     def makeBet(self, small_blind : int, big_blind : int, current_bet : int,
                 community_cards : list[Card]) -> tuple[BetType, list[Card] | int]:

@@ -11,12 +11,27 @@ class Game:
         """
         Creates a game and initializes players with hands.
         """
+
+        """
+        game_state: used to tell what state the game is in
+            0: preflop
+            1: flop
+            2: turn
+            3: river
+        blind_position: position of the big blind I think
+        opponentFold: players that have folded in a give round
+        players: players that are in a game
+        rounds: idk may be useful for integration to keep track of stuff
+            not currently doing anything
+        """
+
         if player_count > 22 or player_count < 1:
             raise ValueError("Player count must be between 1 and 22")
         
         self.players = [game_player("player " + str(x), 800, 
                                     BestHandStrat(), BigBlindCallStrat()) 
                         for x in range(player_count)]
+        # set the players to agents somewhere here by setting "player".is_agent to True
         self.game_state = 0
         self.moves = ("check", "bet", "fold")
         self.blind_position = 0
@@ -28,26 +43,65 @@ class Game:
         """
         Resets the game state for a new round while keeping player balances.
         """
+
+        """
+        deck: the cards in the deck
+        field: the cards from the deck that are currently on the field
+        current_players: the players that are in the current round
+        current_bet: the bet amount that a player needs to exceed to make a bet / the check amount
+        max_bet: the max amount of money the poorest player has
+            used to avoid split pot logic
+        big_blind_amount: i think this and the next are self explanatory
+        small_blind_amount
+        """
         self.deck = deque([Card(rank, suit) for suit in Suit for rank in Rank])
         self.shuffle_deck()
         self.field = []
         self.current_players = [(player, 0) for player in self.players if player.money > 0]
-        self.current_bet = self.current_turn = self.total_pot = self.current_pot = self.max_bet = 0
-
+        self.current_bet = self.current_turn = self.total_pot = self.current_pot = self.game_state = 0
+        self.max_bet = min(player.getMoney() for player in self.players) # the max bet a player can make is the maximum amount of money the poorest player has
+        self.big_blind_amount = 20
+        self.small_blind_amount = 10
+        
         if len(self.current_players) < 2:
             return
 
         # rotate blinds
-        active_players = [p for p in self.players if p.money > 0]
+        active_players = [p for p in self.players if p.money > 0] 
+        # ^ players currently active in a round I'm assuming?
         self.blind_position = (self.blind_position + 1) % len(active_players)
 
-        # blinds
-        self.small_blind = {"bet": 10, "index": self.blind_position}
-        self.big_blind = {"bet": 20, "index": (self.blind_position + 1) % len(active_players)}
+        # blind logic
+        self.small_blind = {"bet": self.small_blind_amount, "index": self.blind_position}
+        self.big_blind = {"bet": self.big_blind_amount, "index": (self.blind_position + 1) % len(active_players)}
+        self.sb_player = active_players[self.small_blind['index']]
+        self.bb_player = active_players[self.big_blind['index']]
 
-        print(f"Small Blind: {active_players[self.small_blind['index']].getName()}")
-        print(f"Big Blind: {active_players[self.big_blind['index']].getName()}")
+        print(f"Small Blind: {self.sb_player.getName()}")
+        print(f"Big Blind: {self.bb_player.getName()}")
 
+        sb_bet_amount = self.sb_player.getMoney()
+        if not self.sb_player.makeBetManual(self.small_blind_amount):
+            # if the sb doesn't have enough money, it is considered an "all in"
+            self.current_bet = sb_bet_amount
+            self.sb_player.makeBetManual(sb_bet_amount)
+            self.current_pot+= sb_bet_amount
+        else:
+            self.current_pot+=self.small_blind_amount
+            self.current_bet = self.small_blind_amount
+
+        bb_bet_amount = self.bb_player.getMoney()
+        if not self.bb_player.makeBetManual(self.big_blind_amount):
+            # if the bb doesn't have enough money, it is considered an "all in"
+            if bb_bet_amount>self.current_bet:
+                self.current_bet = bb_bet_amount
+            self.bb_player.makeBetManual(bb_bet_amount)
+            self.current_pot+= bb_bet_amount
+        else:
+            self.current_pot+= self.big_blind_amount
+            self.current_bet = self.big_blind_amount
+
+        # setting the stage
         self.deal()
     
         self.current_turn = (self.big_blind["index"] + 1) % len(active_players)
@@ -65,14 +119,17 @@ class Game:
     def flop(self) -> None:
         self.burn()
         self.field.extend([self.deck.popleft() for _ in range(3)])
+        self.game_state = 1
     
     def turn(self) -> None:
         self.burn()
         self.field.append(self.deck.popleft())
+        self.game_state = 2
     
     def river(self) -> None:
         self.burn()
         self.field.append(self.deck.popleft())
+        self.game_state = 3
     
     def burn(self) -> None:
         self.deck.popleft()
@@ -97,6 +154,9 @@ class Game:
 
         return player._fold()  
     
+    def add_to_pot(self, money):
+        self.current_pot+=money
+
     def play_turns(self):
         """Betting Rounds"""
         if len(self.current_players) <= 1:
@@ -104,8 +164,6 @@ class Game:
 
         print("\n--- Betting Round ---")
 
-        self.current_bet = 0  
-        self.max_bet = 0   
         players_acted = {player[0]: False for player in self.current_players}  
 
         while True:
@@ -117,6 +175,12 @@ class Game:
 
             if players_acted[player] and all(p.money == 0 or players_acted[p] for p, _ in self.current_players):
                 break  
+
+            # more info in the round
+            print(f"The total pot is: ${self.total_pot}.")
+            print(f"The current pot is: ${self.current_pot}.")
+            print(f"The current bet is : ${self.current_bet}.")
+            print(f"The max bet is : ${self.max_bet}.")
 
             # prompt
             while True:
@@ -132,22 +196,45 @@ class Game:
                 while True:
                     try:
                         bet_amount = int(input(f"{player.getName()}, enter bet amount: "))
+                        # checks if the bet is more than player money, if so go all in
                         if bet_amount > player.money:
-                            print("You don't have enough chips! Betting all-in instead.")
+                            print("You don't have enough chips! Using all your money for checks instead.")
                             bet_amount = player.money
-                        break
+                        # checks if bet is more than current bet
+                            # this one is currenlt broken and needs fixing, I put comments below
+                        if bet_amount < self.current_bet:
+                            print("Your bet is not high enough, please try again.")
+                        # checks for the max bet
+                        elif bet_amount > self.max_bet:
+                            print("Your bet amount exceeds the max bet amount, please try again.")
+                        else:
+                            print(f"Your bet amount of ${bet_amount} was accepted.")
+                            break
                     except ValueError:
                         print("Invalid amount. Please enter a number.")
                 
-                player.makeBet(1, bet_amount, self.current_bet, self.field)
-                self.current_bet = bet_amount
-                self.max_bet = max(self.max_bet, bet_amount)
-                players_acted = {p[0]: False for p in self.current_players}  
+                # different betting method if it is an agent
+                if player.is_agent:
+                    player.makeBet(1, bet_amount, self.current_bet, self.field)
+                    # idk how u wanna implement this wiht the pot stuff
+                # player uses manual bets
+                else:
+                    player.makeBetManual(bet_amount)
+                    self.add_to_pot(bet_amount)
 
+                self.current_bet = bet_amount # broken, need to change how this works
+                self.max_bet = min(player.getMoney() for player in self.players)
+                players_acted = {p[0]: False for p in self.current_players}  
+            elif action == "check":
+                # note that it should never occur that the player cannot check since 
+                # it should always check for the least amount of money
+                player.makeBetManual(self.current_bet) # need to change how current_bet works
             players_acted[player] = True
             self.current_turn = (self.current_turn + 1) % len(self.current_players)  # Rotate 
 
         print("\n--- Betting done ---")
+        self.total_pot+=self.current_pot
+        self.current_pot = 0 # reset current pot for new round
     
     def prompt_player_action(self, player):
         while True:
@@ -158,9 +245,14 @@ class Game:
 
     def showdown(self):
         """1v1 at the end"""
+        # essentially needs to be replaced entirely
+        # should check for all players then use the hand scores to find a winner
+        # ties should result in a split pot between ppl who tied
+            # we can truncate the value if we have a strange division result
         if len(self.current_players) == 1:
             winner = self.current_players[0][0]
             print(f"{winner.getName()} wins.")
+            winner.money += self.total_pot
             return winner
 
         print("\n--- Showdown ---")
@@ -177,10 +269,11 @@ class Game:
                 best_player = player
 
         print(f"\n{best_player.getName()} wins with the strongest cards.")
+        best_player.money += self.total_pot
         return best_player
 
     def compare_hands(self, hand1, hand2):
- 
+        # should be replaced entirely
         hand1_sorted = sorted(hand1, key=lambda card: card.rank.value, reverse=True)
         hand2_sorted = sorted(hand2, key=lambda card: card.rank.value, reverse=True)
 
@@ -262,10 +355,13 @@ g.play_game()
 
 
 """
-Add checks for current bet so it doesn't surpass the player with the least money
-    also other bets
-Add small blind turn change
-Add more information
-Add the blind bet amounts
+Need to change it so that the current bet and the players bets are more dynamic
+    currently, the current bet is just the highest bet on the field, but
+    this needs to constantly change since players need to make different bet amounts.
+    This can be dones by keeping track of the player's bet through their instance variable,
+    then doing some math with the current bet and the player's bet resulting in the correct
+    value they must bet.
+Also need to check when everyone folds, currenlty it's just hella buggy and the money disappears into the void.
 Showdown is just pocket cards
+Add logic to remove players if they reach $0
 """
