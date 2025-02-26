@@ -155,7 +155,43 @@ class Game:
             if action in self.moves:
                 return action
             print("invalid.")
-    
+
+    def showdown(self):
+        """1v1 at the end"""
+        if len(self.current_players) == 1:
+            winner = self.current_players[0][0]
+            print(f"{winner.getName()} wins.")
+            return winner
+
+        print("\n--- Showdown ---")
+        
+        best_player = None
+        best_cards = None  
+        
+        for player, _ in self.current_players:
+            pocket_cards = player.pocket_cards  
+            print(f"{player.getName()} shows: {pocket_cards[0]}, {pocket_cards[1]}")
+            
+            if best_cards is None or self.compare_hands(pocket_cards, best_cards) > 0:
+                best_cards = pocket_cards
+                best_player = player
+
+        print(f"\n{best_player.getName()} wins with the strongest cards.")
+        return best_player
+
+    def compare_hands(self, hand1, hand2):
+ 
+        hand1_sorted = sorted(hand1, key=lambda card: card.rank.value, reverse=True)
+        hand2_sorted = sorted(hand2, key=lambda card: card.rank.value, reverse=True)
+
+        for card1, card2 in zip(hand1_sorted, hand2_sorted):
+            if card1.rank.value > card2.rank.value:
+                return 1
+            elif card1.rank.value < card2.rank.value:
+                return -1
+        return 0  
+
+
     def play_game(self):
         """
         Plays multiple rounds of Texas Hold'em until only one player remains.
