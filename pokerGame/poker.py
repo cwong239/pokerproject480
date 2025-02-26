@@ -42,8 +42,8 @@ class Game:
         self.blind_position = (self.blind_position + 1) % len(active_players)
 
         # blinds
-        self.small_blind = {"bet": 0, "index": self.blind_position}
-        self.big_blind = {"bet": 0, "index": (self.blind_position + 1) % len(active_players)}
+        self.small_blind = {"bet": 10, "index": self.blind_position}
+        self.big_blind = {"bet": 20, "index": (self.blind_position + 1) % len(active_players)}
 
         print(f"Small Blind: {active_players[self.small_blind['index']].getName()}")
         print(f"Big Blind: {active_players[self.big_blind['index']].getName()}")
@@ -259,3 +259,13 @@ class Game:
 # Start game session
 g = Game(5)
 g.play_game()
+
+
+"""
+Add checks for current bet so it doesn't surpass the player with the least money
+    also other bets
+Add small blind turn change
+Add more information
+Add the blind bet amounts
+Showdown is just pocket cards
+"""
