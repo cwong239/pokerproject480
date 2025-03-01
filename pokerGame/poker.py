@@ -376,6 +376,3 @@ g.play_game()
 
 
 """Showdown is just pocket cards"""
-
-
-#Cards: H7 C4 SK H4 H3
