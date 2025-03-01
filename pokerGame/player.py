@@ -44,7 +44,8 @@ class Player:
         """
         if bet_amount > self.getMoney():
             return False
-        self.money-=bet_amount
+        self.money -= bet_amount
+        self.bet += bet_amount
         return True
     
     def makeBet(self, small_blind : int, big_blind : int, current_bet : int,

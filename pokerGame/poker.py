@@ -37,7 +37,7 @@ class Game:
         self.blind_position = 0
         self.opponentFold = {player: 0.0 for player in self.players}
         self.rounds = 0
-        self.reset_game()
+        #self.reset_game()
     
     def reset_game(self):
         """
@@ -57,7 +57,7 @@ class Game:
         self.deck = deque([Card(rank, suit) for suit in Suit for rank in Rank])
         self.shuffle_deck()
         self.field = []
-        self.current_players = [(player, 0) for player in self.players if player.money > 0]
+        self.current_players = [player for player in self.players if player.money > 0]
         self.current_bet = self.current_turn = self.total_pot = self.current_pot = self.game_state = 0
         self.max_bet = min(player.getMoney() for player in self.players) # the max bet a player can make is the maximum amount of money the poorest player has
         self.big_blind_amount = 20
@@ -112,7 +112,7 @@ class Game:
     
     def deal(self) -> None:
         """Deals pocket cards to all active players."""
-        for player, _ in self.current_players:
+        for player in self.current_players:
             player.pocket_cards.clear()  
             player.recievePocket(self.deck.popleft(), self.deck.popleft())
     
@@ -136,7 +136,7 @@ class Game:
     
     def fold(self, index):
 
-        player = self.current_players[index][0]
+        player = self.current_players[index]
         print(f"{player.getName()} has folded.")
 
         # removes player
@@ -159,21 +159,35 @@ class Game:
 
     def play_turns(self):
         """Betting Rounds"""
+
+        if self.game_state == 0:
+            self.current_turn = (self.blind_position + 2) % len(self.current_players)
+        else:
+            self.current_turn = self.blind_position
+
         if len(self.current_players) <= 1:
             return  
 
         print("\n--- Betting Round ---")
 
-        players_acted = {player[0]: False for player in self.current_players}  
+        players_acted = {player: False for player in self.current_players}  
 
         while True:
+
             if len(self.current_players) <= 1:
-                print(f"{self.current_players[0][0].getName()} wins the round!")
+                print(f"{self.current_players[0].getName()} wins the round!")
+
+                self.total_pot+=self.current_pot
+                self.current_players[0].money += self.total_pot
+                for player in self.current_players:
+                    player.clearBet()
                 return  
 
-            player, _ = self.current_players[self.current_turn]
+            player = self.current_players[self.current_turn]
 
-            if players_acted[player] and all(p.money == 0 or players_acted[p] for p, _ in self.current_players):
+            if players_acted[player] and all(p.money == 0 or players_acted[p] for p in self.current_players):
+                for player in self.current_players:
+                    player.clearBet()
                 break  
 
             # more info in the round
@@ -224,17 +238,24 @@ class Game:
 
                 self.current_bet = bet_amount # broken, need to change how this works
                 self.max_bet = min(player.getMoney() for player in self.players)
-                players_acted = {p[0]: False for p in self.current_players}  
+                players_acted = {p: False for p in self.current_players}  
             elif action == "check":
                 # note that it should never occur that the player cannot check since 
                 # it should always check for the least amount of money
-                player.makeBetManual(self.current_bet) # need to change how current_bet works
+                self.current_pot += self.current_bet - player.bet
+                player.makeBetManual(self.current_bet - player.bet) # need to change how current_bet works
+
             players_acted[player] = True
             self.current_turn = (self.current_turn + 1) % len(self.current_players)  # Rotate 
 
         print("\n--- Betting done ---")
+
+        for player in self.players:
+            print(f"{player.getName()} - Money: ${player.getMoney()}")
+
         self.total_pot+=self.current_pot
         self.current_pot = 0 # reset current pot for new round
+        self.current_bet = 0
     
     def prompt_player_action(self, player):
         while True:
@@ -250,7 +271,7 @@ class Game:
         # ties should result in a split pot between ppl who tied
             # we can truncate the value if we have a strange division result
         if len(self.current_players) == 1:
-            winner = self.current_players[0][0]
+            winner = self.current_players[0]
             print(f"{winner.getName()} wins.")
             winner.money += self.total_pot
             return winner
@@ -260,7 +281,7 @@ class Game:
         best_player = None
         best_cards = None  
         
-        for player, _ in self.current_players:
+        for player in self.current_players:
             pocket_cards = player.pocket_cards  
             print(f"{player.getName()} shows: {pocket_cards[0]}, {pocket_cards[1]}")
             
@@ -295,20 +316,20 @@ class Game:
                 break
 
             print("\n===== Starting a New Round =====")
+
+            self.reset_game()
             
             # Player Balances
             print("\n--- Player Balances ---")
             for player in self.players:
                 print(f"{player.getName()} - Money: ${player.getMoney()}")
 
-            self.reset_game()
-
             # Pre-flop betting round
             print("\n--- Pre-Flop Betting Round ---")
             self.play_turns()
             
             if len(self.current_players) <= 1:
-                print(f"{self.current_players[0][0].getName()} wins this round!")
+                print(f"{self.current_players[0].getName()} wins this round!")
                 continue  # Move to next round if only one player remains
 
             # Flop
@@ -318,7 +339,7 @@ class Game:
             self.play_turns()
 
             if len(self.current_players) <= 1:
-                print(f"{self.current_players[0][0].getName()} wins this round!")
+                print(f"{self.current_players[0].getName()} wins this round!")
                 continue
 
             # Turn
@@ -328,7 +349,7 @@ class Game:
             self.play_turns()
 
             if len(self.current_players) <= 1:
-                print(f"{self.current_players[0][0].getName()} wins this round!")
+                print(f"{self.current_players[0].getName()} wins this round!")
                 continue
 
             # River
@@ -354,14 +375,7 @@ g = Game(5)
 g.play_game()
 
 
-"""
-Need to change it so that the current bet and the players bets are more dynamic
-    currently, the current bet is just the highest bet on the field, but
-    this needs to constantly change since players need to make different bet amounts.
-    This can be dones by keeping track of the player's bet through their instance variable,
-    then doing some math with the current bet and the player's bet resulting in the correct
-    value they must bet.
-Also need to check when everyone folds, currenlty it's just hella buggy and the money disappears into the void.
-Showdown is just pocket cards
-Add logic to remove players if they reach $0
-"""
+"""Showdown is just pocket cards"""
+
+
+#Cards: H7 C4 SK H4 H3
