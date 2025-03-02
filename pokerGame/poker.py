@@ -7,7 +7,7 @@ from collections import deque
 from betStrategy import BetType
 
 class Game:
-    def __init__(self, player_count: int):
+    def __init__(self, player_count: int, bot_count=0):
         """
         Creates a game and initializes players with hands.
         """
@@ -28,9 +28,7 @@ class Game:
         if player_count > 22 or player_count < 1:
             raise ValueError("Player count must be between 1 and 22")
         
-        self.players = [game_player("player " + str(x), 800, 
-                                    BestHandStrat(), BigBlindCallStrat()) 
-                        for x in range(player_count)]
+        self.players = [game_player("player " + str(x), 800, BestHandStrat(), BigBlindCallStrat()) for x in range(player_count)] + [game_player("player " + str(x), 800, BestHandStrat(), BigBlindCallStrat(), is_agent=True) for x in range(player_count, player_count+bot_count)]
         # set the players to agents somewhere here by setting "player".is_agent to True
         self.game_state = 0
         self.moves = ("check", "bet", "fold")
@@ -38,7 +36,7 @@ class Game:
         self.opponentFold = {player: 0.0 for player in self.players}
         self.rounds = 0
         #self.reset_game()
-    
+        
     def reset_game(self):
         """
         Resets the game state for a new round while keeping player balances.
@@ -118,18 +116,24 @@ class Game:
     
     def flop(self) -> None:
         self.burn()
+        self.current_bet = 0
         self.field.extend([self.deck.popleft() for _ in range(3)])
         self.game_state = 1
+        self.current_turn = self.blind_position
     
     def turn(self) -> None:
         self.burn()
+        self.current_bet = 0
         self.field.append(self.deck.popleft())
         self.game_state = 2
+        self.current_turn = self.blind_position
     
     def river(self) -> None:
+        self.current_bet = 0
         self.burn()
         self.field.append(self.deck.popleft())
         self.game_state = 3
+        self.current_turn = self.blind_position
     
     def burn(self) -> None:
         self.deck.popleft()
@@ -242,8 +246,7 @@ class Game:
             elif action == "check":
                 # note that it should never occur that the player cannot check since 
                 # it should always check for the least amount of money
-                self.current_pot += self.current_bet - player.bet
-                player.makeBetManual(self.current_bet - player.bet) # need to change how current_bet works
+                self.check(player) # need to change how current_bet works
 
             players_acted[player] = True
             self.current_turn = (self.current_turn + 1) % len(self.current_players)  # Rotate 
@@ -257,6 +260,16 @@ class Game:
         self.current_pot = 0 # reset current pot for new round
         self.current_bet = 0
     
+    def check(self, player):
+        self.current_pot += self.current_bet - player.bet
+        if self.current_bet - player.bet == 0:
+            out = 0
+        else:
+            out = self.current_bet - player.bet
+        player.makeBetManual(self.current_bet - player.bet)
+        return out
+        
+
     def prompt_player_action(self, player):
         while True:
             action = input(f"{player.getName()}, (check, bet, fold): ").strip().lower()
@@ -371,8 +384,8 @@ class Game:
 
 
 # Start game session
-g = Game(5)
-g.play_game()
+#g = Game(5)
+#g.play_game()
 
 
 """Showdown is just pocket cards"""

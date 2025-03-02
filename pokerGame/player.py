@@ -6,7 +6,7 @@ from betStrategy import BetStrat, BetType
 
 class Player:
     def __init__(self, name : str, money : int, 
-                 hand_strat : HandStrat, bet_strat : BetStrat) -> None:
+                 hand_strat : HandStrat, bet_strat : BetStrat, is_agent=False) -> None:
         """
         Creates a player in a game of Texas Hold 'em. Can be a bot or human
         """
@@ -16,7 +16,7 @@ class Player:
         self.name = name
         self.hand_strat = hand_strat
         self.bet_strat = bet_strat
-        self.is_agent = False
+        self.is_agent = is_agent
     
     def getName(self) -> str:
         return self.name
@@ -149,3 +149,6 @@ class Player:
 
     def __str__(self):
         return f'Player: {self.name} Cards: {self.pocket_cards} Money: {self.money}'
+    
+    def print_cards(self):
+        return f'{self.name} Cards: {self.pocket_cards}'
