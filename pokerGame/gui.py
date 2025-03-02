@@ -18,7 +18,7 @@ class PokerGUI:
 
         self.create_widgets()
         self.log(f"\nSmall Blind: {self.game.current_players[self.game.blind_position].getName()}")
-        self.log(f"Big Blind: {self.game.current_players[self.game.blind_position + 1].getName()}\n")
+        self.log(f"Big Blind: {self.game.current_players[(self.game.blind_position + 1) % len(self.game.current_players)].getName()}\n")
         self.update_display()
         self.play()
 
@@ -149,7 +149,7 @@ class PokerGUI:
         self.update_display()
     
     def make_bet(self):
-        max_bet = min(player.getMoney() for player in self.players)
+        max_bet = min(player.getMoney() for player in self.game.players)
         try:
             curr_player = self.game.current_players[self.game.current_turn]
             amount = int(self.bet_entry.get())
@@ -199,8 +199,8 @@ class PokerGUI:
         self.players_acted = {player: False for player in self.game.current_players} 
         self.winner.set(f"")
         self.log("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nStarting New Round...")
-        self.log(f"Small Blind: {self.game.current_players[self.game.blind_position]}")
-        self.log(f"Big Blind: {self.game.current_players[self.game.blind_position + 1]}")
+        self.log(f"Small Blind: {self.game.current_players[self.game.blind_position].getName()}")
+        self.log(f"Big Blind: {self.game.current_players[(self.game.blind_position + 1) % len(self.game.current_players)].getName()}")
         self.update_display()
         self.play()
 
