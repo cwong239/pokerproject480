@@ -145,8 +145,10 @@ class Player:
         all_cards.extend(community_cards)
 
         self.hand_strat.takeInCards(all_cards)
-        return self.hand_strat.execute()
+        result = self.hand_strat.execute()
         # sort the cards from highest to lowest
+        sorted_hand = sorted(result[0], key=lambda card: -card.getRank().value)
+        return (sorted_hand, result[1])
 
     def __str__(self):
         return f'Player: {self.name} Cards: {self.pocket_cards} Money: {self.money}'

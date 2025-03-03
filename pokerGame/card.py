@@ -46,3 +46,18 @@ class Card:
                     and self.getSuit().value == other.getSuit().value)
         
         return False
+    
+    def __gt__(self, other):
+        if isinstance(other, Card):
+            return self.getRank().value > other.getRank().value
+
+        return False
+    
+    def __lt__(self, other):
+        if isinstance(other, Card):
+            return self.getRank().value < other.getRank().value
+        
+        return False
+    
+    def __hash__(self):
+        return hash(self.rank.value + (100 * self.suit.value))

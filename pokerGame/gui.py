@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 from poker import Game  # Assuming your game class is in game.py
+from player import Player
 import time
 
 class PokerGUI:
@@ -204,17 +205,21 @@ class PokerGUI:
         self.update_display()
         self.play()
 
-    def game_over(self, winner):
+    def game_over(self, winners : list[Player]):
         for player in self.game.current_players:
             self.log(f'\n{player.print_cards()}')
-        self.log(f"\nRound won by {winner.getName()}")
+        
+        for winner in winners:
+            self.log(f"\nRound won by {winner.getName()}")
+            winner.money += (self.game.total_pot + self.game.current_pot)
+            self.winner.set(f"{winner.getName()} Wins!")
+            
         for widget in self.button_frame.winfo_children():
             widget.pack_forget()
         self.bet_entry.pack_forget()
         self.continue_button = tk.Button(self.button_frame, text="Continue", command=self.play_again)
         self.continue_button.pack()
-        winner.money += (self.game.total_pot + self.game.current_pot)
-        self.winner.set(f"{winner.getName()} Wins!")
+        
         self.game.total_pot = 0
         self.game.current_pot = 0
         self.update_money()

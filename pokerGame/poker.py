@@ -1,10 +1,11 @@
 from player import Player as game_player
 from card import Card, Suit, Rank
 from handStrategy import BestHandStrat
-from betStrategy import BigBlindCallStrat
+from betStrategy import BigBlindCallStrat, ArguablyOptimalStrat
 from random import shuffle
 from collections import deque
 from betStrategy import BetType
+from handBuilder import HandVal
 
 class Game:
     def __init__(self, player_count: int, bot_count=0):
@@ -28,7 +29,8 @@ class Game:
         if player_count > 22 or player_count < 1:
             raise ValueError("Player count must be between 1 and 22")
         
-        self.players = [game_player("player " + str(x), 800, BestHandStrat(), BigBlindCallStrat()) for x in range(player_count)] + [game_player("player " + str(x), 800, BestHandStrat(), BigBlindCallStrat(), is_agent=True) for x in range(player_count, player_count+bot_count)]
+        self.players = [game_player("player " + str(x), 800, BestHandStrat(), BigBlindCallStrat()) for x in range(player_count)]
+        self.players += [game_player("player " + str(x), 800, BestHandStrat(), BigBlindCallStrat(), is_agent=True) for x in range(player_count, player_count+bot_count)]
         # set the players to agents somewhere here by setting "player".is_agent to True
         self.game_state = 0
         self.moves = ("check", "bet", "fold")
@@ -277,35 +279,73 @@ class Game:
                 return action
             print("invalid.")
 
-    def showdown(self):
-        """1v1 at the end"""
-        # essentially needs to be replaced entirely
-        # should check for all players then use the hand scores to find a winner
-        # ties should result in a split pot between ppl who tied
-            # we can truncate the value if we have a strange division result
+    def showdown(self) -> list[game_player]:
+        """
+        All players still in the game compare their best hand, player(s) with 
+        best hand wins
+        
+        If multiple players have the exact same hand (playing the board) 
+        then the pot is split between all remaining players
+        """
         if len(self.current_players) == 1:
             winner = self.current_players[0]
-            print(f"{winner.getName()} wins.")
-            winner.money += self.total_pot
-            return winner
+            print(f"{winner.getName()} wins. Only player left")
+            return [winner]
 
         print("\n--- Showdown ---")
         
-        best_value : int = 0
-        best_players : list[game_player] = []
+        hands = {}
         
+        # Get the player(s) associated with each hand
         for player in self.current_players:
             pocket_cards = player.pocket_cards  
             print(f"{player.getName()} shows: {pocket_cards[0]}, {pocket_cards[1]}")
             
-            player_hand = player.constructHand(self.field)
-            print(f"{player.getName()} shows: {player_hand[0][0]}, {player_hand[0][1]}, 
-                    {player_hand[0][2]}, {player_hand[0][3]}, {player_hand[0][4]},
-                    {player_hand[0][5]}, {player_hand[0][6]}")
+            result = player.constructHand(self.field)
+            # convert list->tuple so hand can be a dictionary key
+            player_hand = (tuple(result[0]), result[1]) 
+            print("{} shows: {}, {}, {}, {}, {}".format(player.getName(), 
+                                                        player_hand[0][0], 
+                                                        player_hand[0][1], 
+                                                        player_hand[0][2], 
+                                                        player_hand[0][3], 
+                                                        player_hand[0][4]))
 
-        print(f"\n{best_player.getName()} wins with the strongest cards.")
-        best_player.money += self.total_pot
-        return best_player
+            if hands.get(player_hand) is not None:
+                hands.get(player_hand).append(player)
+            else:
+                hands[player_hand] = [player]
+
+        # Find the highest hand type (ex: Flush)
+        best_value = 0
+        for hand in hands.keys():
+            if hand[1].value > best_value:
+                best_value = hand[1].value
+        
+        # Get all hands of the highest type (ex: all Flushes)
+        best_hands = []
+        for hand in hands.keys():
+            if hand[1].value == best_value:
+                best_hands.append(hand)
+        
+        # Get the hand with the highest cards (ex: royal flush vs Q-8 Straight Flush)
+        highest_hand = ((Card(Rank.TWO, Suit.SPADE),
+                         Card(Rank.TWO, Suit.SPADE),
+                         Card(Rank.TWO, Suit.SPADE),
+                         Card(Rank.TWO, Suit.SPADE),
+                         Card(Rank.TWO, Suit.SPADE)), 
+                        HandVal.NO_HAND)
+        for hand in best_hands:
+            if hand[0] > highest_hand[0]:
+                highest_hand = hand
+        
+        # get player(s) associated with the highest hand
+        winners : list[game_player] = hands.get(highest_hand)
+        print("There are {} winners:".format(len(winners)))
+        for best_player in winners:
+            print("\n{} wins with the strongest cards.".format(best_player.getName()))
+        
+        return winners
 
     def compare_hands(self, hand1, hand2):
         # should be replaced entirely
