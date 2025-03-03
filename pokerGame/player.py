@@ -146,6 +146,7 @@ class Player:
 
         self.hand_strat.takeInCards(all_cards)
         return self.hand_strat.execute()
+        # sort the cards from highest to lowest
 
     def __str__(self):
         return f'Player: {self.name} Cards: {self.pocket_cards} Money: {self.money}'

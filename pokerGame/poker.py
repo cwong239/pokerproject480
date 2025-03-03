@@ -291,14 +291,17 @@ class Game:
 
         print("\n--- Showdown ---")
         
-        best_player : game_player = None
-        best_cards : int= None  
+        best_value : int = 0
+        best_players : list[game_player] = []
         
         for player in self.current_players:
             pocket_cards = player.pocket_cards  
             print(f"{player.getName()} shows: {pocket_cards[0]}, {pocket_cards[1]}")
             
             player_hand = player.constructHand(self.field)
+            print(f"{player.getName()} shows: {player_hand[0][0]}, {player_hand[0][1]}, 
+                    {player_hand[0][2]}, {player_hand[0][3]}, {player_hand[0][4]},
+                    {player_hand[0][5]}, {player_hand[0][6]}")
 
         print(f"\n{best_player.getName()} wins with the strongest cards.")
         best_player.money += self.total_pot
