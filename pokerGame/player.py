@@ -83,7 +83,7 @@ class Player:
             assert Exception("Can't fold if there are no pocket cards!")
 
         old_cards = deepcopy(self.pocket_cards)
-        self.pocket_cards.clear()
+        self.clearPocket()
         return old_cards
      
     def _bet(self, amount : int) -> int:
@@ -130,8 +130,17 @@ class Player:
         """
         Recieve the 2 personal cards from dealer
         """
+        if len(self.pocket_cards) > 0:
+            raise Exception("Can't accept more cards than 2 pocket cards!")
+
         self.pocket_cards.append(card1)
         self.pocket_cards.append(card2)
+
+    def clearPocket(self) -> None:
+        """
+        Get rid of pocket cards. For folding or preparing for next round
+        """
+        self.pocket_cards.clear()
 
     def constructHand(self, community_cards : list[Card]) -> tuple[list[Card], HandVal]:
         """
@@ -139,16 +148,16 @@ class Player:
         Uses 5 community cards and 2 "pocket" cards
         """
         if not self.pocket_cards:
-            assert Exception("Can't build a hand if there are no pocket cards!")
+            raise Exception("Can't build a hand if there are no pocket cards!")
 
         all_cards = deepcopy(self.pocket_cards)
         all_cards.extend(community_cards)
 
+        if len(all_cards) != 7:
+            raise Exception("Should have exatly 7 cards to build hand: {}".format(all_cards))
+
         self.hand_strat.takeInCards(all_cards)
-        result = self.hand_strat.execute()
-        # sort the cards from highest to lowest
-        sorted_hand = sorted(result[0], key=lambda card: -card.getRank().value)
-        return (sorted_hand, result[1])
+        return self.hand_strat.execute()
 
     def __str__(self):
         return f'Player: {self.name} Cards: {self.pocket_cards} Money: {self.money}'

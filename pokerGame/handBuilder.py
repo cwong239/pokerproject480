@@ -21,13 +21,16 @@ class HandBuilder:
     and 5 community cards
     """
     def __init__(self, cards : list[Card]) -> None:
+        if len(cards) != 7:
+            raise Exception("Invalid number of cards for hand construction: {}".format(cards))
+        
         self.cards = cards
         self.same_value : dict[Rank, list[Card]] = {}
         self.same_suit : dict [Suit, list[Card]] = {}
         self.sequences : list[list[Card]] = []
-        self.processCards()
+        self._processCards()
     
-    def processCards(self) -> None:
+    def _processCards(self) -> None:
         """
         Process cards into groups with same value and same suit.
         Also check if there is a sequence of 5 consecutive cards (straight)
@@ -58,6 +61,15 @@ class HandBuilder:
                     seq.append(value_sorted[j])
                 
                 self.sequences.append(seq)
+    
+    def _getOtherCards(self, cur_cards : list[Card]) -> list[Card]:
+        """
+        Get cards not currently in the hand in order from highest to lowest rank
+        """
+        other_cards = [card for card in self.cards if card not in cur_cards]
+        sorted_cards = sorted(other_cards)
+        sorted_cards.reverse()
+        return sorted_cards
 
     def checkStraightFlush(self) -> tuple[list[Card], HandVal]:
         """
@@ -83,7 +95,7 @@ class HandBuilder:
         for vals in self.same_value.values():
             if len(vals) == 4:
                 # get another card to complete the hand
-                other_cards = [card for card in self.cards if card not in vals]
+                other_cards = self._getOtherCards(vals)
                 hand = deepcopy(vals)
                 hand.append(other_cards[0])
                 return (hand, HandVal.FOUR_OF_KIND)
@@ -138,7 +150,7 @@ class HandBuilder:
         for vals in self.same_value.values():
             if len(vals) == 3:
                 # get two cards to complete the hand
-                other_cards = [card for card in self.cards if card not in vals]
+                other_cards = self._getOtherCards(vals)
                 #list(set(self.cards) - set(vals))
                 hand = deepcopy(vals)
                 hand.extend(other_cards[:2])
@@ -165,7 +177,7 @@ class HandBuilder:
         if pair1 and pair2:
             partial_hand = pair1 + pair2
             # get a card to complete the hand
-            other_cards = [card for card in self.cards if card not in partial_hand]
+            other_cards = self._getOtherCards(partial_hand)
             hand = deepcopy(partial_hand)
             hand.append(other_cards[0])
             return (hand, HandVal.TWO_PAIRS)
@@ -179,7 +191,7 @@ class HandBuilder:
         for vals in self.same_value.values():
             if len(vals) == 2:
                 # get three cards to complete the hand
-                other_cards = [card for card in self.cards if card not in vals]
+                other_cards = self._getOtherCards(vals)
                 hand = deepcopy(vals)
                 hand.extend(other_cards[:3])
                 return (hand, HandVal.PAIR)
@@ -198,7 +210,7 @@ class HandBuilder:
                 high_card = card
         
         # get four cards to compelte the hand
-        other_cards = [card for card in self.cards if card != high_card]
+        other_cards = self._getOtherCards([high_card])
         hand = [high_card]
         hand.extend(other_cards[:4])
         return (hand, HandVal.HIGH_CARD)

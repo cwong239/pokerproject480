@@ -55,6 +55,8 @@ class BestHandStrat(HandStrat):
         
         # current handbuilder no longer needed
         self.builder = None
+        # reset hand order
+        self.hand_order.clear()
 
         return result_hand
 

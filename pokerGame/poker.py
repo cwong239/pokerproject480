@@ -62,6 +62,10 @@ class Game:
         self.max_bet = min(player.getMoney() for player in self.players) # the max bet a player can make is the maximum amount of money the poorest player has
         self.big_blind_amount = 20
         self.small_blind_amount = 10
+
+        # clear pocket cards on all players
+        for player in self.players:
+            player.clearPocket()
         
         if len(self.current_players) < 2:
             return
@@ -113,7 +117,6 @@ class Game:
     def deal(self) -> None:
         """Deals pocket cards to all active players."""
         for player in self.current_players:
-            player.pocket_cards.clear()  
             player.recievePocket(self.deck.popleft(), self.deck.popleft())
     
     def flop(self) -> None:
@@ -293,23 +296,20 @@ class Game:
             return [winner]
 
         print("\n--- Showdown ---")
+        print("Field: {}".format(self.field))
         
         hands = {}
         
         # Get the player(s) associated with each hand
         for player in self.current_players:
-            pocket_cards = player.pocket_cards  
-            print(f"{player.getName()} shows: {pocket_cards[0]}, {pocket_cards[1]}")
+            pocket_cards = player.pocket_cards 
+            print("{} shows: {}".format(player.getName(), pocket_cards))
             
             result = player.constructHand(self.field)
             # convert list->tuple so hand can be a dictionary key
             player_hand = (tuple(result[0]), result[1]) 
-            print("{} shows: {}, {}, {}, {}, {}".format(player.getName(), 
-                                                        player_hand[0][0], 
-                                                        player_hand[0][1], 
-                                                        player_hand[0][2], 
-                                                        player_hand[0][3], 
-                                                        player_hand[0][4]))
+            print("{} shows: {}".format(player.getName(), 
+                                        player_hand[0]))
 
             if hands.get(player_hand) is not None:
                 hands.get(player_hand).append(player)
