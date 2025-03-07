@@ -107,24 +107,24 @@ class Player:
     
     def _raiseBet(self, amount : int) -> int:
         """
-        Raise bet by amount, return total bet
+        Raise bet to given amount, amount raised returned
         """
-        raise_amount = amount
-        if self.money < amount:
+        raise_amount = amount - self.bet
+        if self.money < raise_amount:
             raise_amount = self.money
         
         self.bet += raise_amount
         self.money -= raise_amount
-        return self.bet
+        return raise_amount
     
     def _call(self, amount : int) -> int:
         """
-        Match the bet of another player, return total bet
+        Match the bet of another player, return increase in bet
         """
         if self.bet > amount:
             raise Exception("Can't call to less than current bet!")
 
-        return self._raiseBet(amount - self.bet)
+        return self._raiseBet(amount)
     
     def recievePocket(self, card1 : Card, card2 : Card) -> None:
         """

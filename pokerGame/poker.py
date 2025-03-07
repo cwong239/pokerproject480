@@ -1,13 +1,14 @@
 from player import Player as game_player
 from card import Card, Suit, Rank
 from handStrategy import BestHandStrat
-from betStrategy import BigBlindCallStrat, ArguablyOptimalStrat
+from betStrategy import ConstantCallStrat, ArguablyOptimalStrat
 from random import shuffle
 from collections import deque
-from betStrategy import BetType
 from handBuilder import HandVal
 
 class Game:
+    GAME = None
+
     def __init__(self, player_count: int, bot_count=0):
         """
         Creates a game and initializes players with hands.
@@ -29,8 +30,9 @@ class Game:
         if player_count > 22 or player_count < 1:
             raise ValueError("Player count must be between 1 and 22")
         
-        self.players = [game_player("player " + str(x), 800, BestHandStrat(), BigBlindCallStrat()) for x in range(player_count)]
-        self.players += [game_player("player " + str(x), 800, BestHandStrat(), BigBlindCallStrat(), is_agent=True) for x in range(player_count, player_count+bot_count)]
+        self.players = [game_player("player " + str(x+1), 800, BestHandStrat(), ConstantCallStrat()) for x in range(player_count)]
+        self.players += [game_player("call agent " + str(x+1), 800, BestHandStrat(), ConstantCallStrat(), is_agent=True) for x in range(int(bot_count-1))]
+        self.players += [game_player("optimal agent " + str(x+1), 800, BestHandStrat(), ArguablyOptimalStrat(), is_agent=True) for x in range(1)]
         # set the players to agents somewhere here by setting "player".is_agent to True
         self.game_state = 0
         self.moves = ("check", "bet", "fold")
@@ -39,6 +41,14 @@ class Game:
         self.rounds = 0
         self.currnum_players = len(self.players)
         #self.reset_game()
+        Game.GAME = self
+    
+    @staticmethod
+    def getInstance():
+        return Game.GAME
+    
+    def getPot(self) -> int:
+        return self.current_pot
         
     def reset_game(self):
         """
@@ -357,8 +367,9 @@ class Game:
                          Card(Rank.TWO, Suit.SPADE)), 
                         HandVal.NO_HAND)
         for hand in best_hands:
-            if hand[0] > highest_hand[0]:
-                highest_hand = hand
+            for i in range(0, 5):
+                if hand[0][i].getRank() > highest_hand[0][i].getRank():
+                    highest_hand = hand
         
         # get player(s) associated with the highest hand
         winners : list[game_player] = hands.get(highest_hand)

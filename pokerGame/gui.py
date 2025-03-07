@@ -3,6 +3,7 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 from poker import Game  # Assuming your game class is in game.py
 from player import Player
+from betStrategy import BetType
 import time
 
 class PokerGUI:
@@ -158,15 +159,8 @@ class PokerGUI:
             if amount <= curr_player.money:
                 if amount <= max_bet:
                     if amount - self.game.current_bet >= self.game.big_blind_amount:
-                        print(curr_player.getName())
                         curr_player._bet(amount)
-                        self.log(f"{curr_player.getName()} bet ${amount}.")
-                        self.game.current_turn = (self.game.current_turn + 1) % len(self.game.current_players)
-                        self.game.current_pot += amount
-                        self.game.current_bet = curr_player.getBet()
-                        self.update_display()
-                        self.players_acted = {player: False for player in self.game.current_players if player != 0} 
-                        self.players_acted[curr_player] = True
+                        self.cpuBet(amount)
                     else:
                         messagebox.showerror("Invalid Input", "You can only raise by at least the big blind")
                 else:
@@ -183,14 +177,60 @@ class PokerGUI:
         self.game.current_turn = (self.game.current_turn) % len(self.game.current_players)
         self.players_acted[curr_player] = True
         self.update_display()
+    
+    def cpuBet(self, amount : int):
+        curr_player : Player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
+        print(curr_player.getName())
+        self.log(f"{curr_player.getName()} bet ${amount}.")
+        self.game.current_turn = (self.game.current_turn + 1) % len(self.game.current_players)
+        self.game.current_pot += amount
+        self.game.current_bet = curr_player.getBet()
+        self.update_display()
+        self.players_acted[curr_player] = True
+
+    def raiseBet(self, raise_amount : int):
+        curr_player : Player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
+        print(curr_player.getName())
+        self.log(f"{curr_player.getName()} raises by ${raise_amount} to ${curr_player.getBet()}.")
+        self.game.current_turn = (self.game.current_turn + 1) % len(self.game.current_players)
+        self.game.current_pot += raise_amount
+        self.game.current_bet = curr_player.getBet()
+        self.update_display()
+        self.players_acted[curr_player] = True
+
+    def callBet(self, call_difference : int):
+        curr_player : Player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
+        print(curr_player.getName())
+        self.log(f"{curr_player.getName()} calls previous bet of ${self.game.current_bet}.")
+        self.game.current_turn = (self.game.current_turn + 1) % len(self.game.current_players)
+        self.game.current_pot += call_difference
+        if self.game.current_bet != curr_player.getBet():
+            raise Exception("Call is not equal to previous bet!")
+        
+        self.update_display() 
+        self.players_acted[curr_player] = True
 
     def log(self, message):
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.see(tk.END)
 
-    def cpu_move(self): # Placeholder, checks every time
-        self.check()
-        self.play()
+    def cpu_move(self):
+        curr_player : Player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
+        bet_result = curr_player.makeBet(self.game.small_blind_amount, 
+                      self.game.big_blind_amount, 
+                      self.game.current_bet,
+                      self.game.field)
+        
+        if bet_result[0] == BetType.CHECK:
+            self.check()
+        elif bet_result[0] == BetType.FOLD:
+            self.fold()
+        elif bet_result[0] == BetType.BET:
+            self.cpuBet(bet_result[1])
+        elif bet_result[0] == BetType.RAISE:
+            self.raiseBet(bet_result[1])
+        else: # must be a call
+            self.callBet(bet_result[1])
 
     def play_again(self):
         self.continue_button.destroy()
@@ -200,7 +240,7 @@ class PokerGUI:
             return
         self.players_acted = {player: False for player in self.game.current_players if player != 0} 
         self.winner.set(f"")
-        self.log("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nStarting New Round...")
+        self.log("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nStarting New Match...")
         self.log(f"Small Blind: {self.game.sb_player.getName()}")
         self.log(f"Big Blind: {self.game.bb_player.getName()}")
         self.update_display()
@@ -245,7 +285,8 @@ class PokerGUI:
                     for player in self.game.current_players:
                         if player != 0:
                             player.clearBet()
-                    self.players_acted = {player: False for player in self.game.current_players if player != 0} 
+                    self.players_acted = {player: False for player in self.game.current_players if player != 0}
+                    self.log("---New Betting Round---")
                     if self.game.game_state == 0:
                         self.game.flop()
                     elif self.game.game_state == 1:
@@ -266,6 +307,7 @@ class PokerGUI:
                     if curr_player.is_agent:
                         # After CPU move is complete, call play again
                         self.root.after(100, self.cpu_move)
+                        self.root.after(100, self.play)
                     else:
                         # If it's not a bot's turn, continue the game
                         self.root.after(100, self.play)

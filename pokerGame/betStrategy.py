@@ -59,11 +59,14 @@ class BetStrat:
             if opponent_hand_value - self_hand_value > value_threshold:
                 return (BetType.CHECK, 0)
             else:
-                return (BetType.RAISE, big_blind)
+                return (BetType.BET, big_blind)
         else:
             # previous player has made a bet
-            if ((opponent_hand_value - self_hand_value <= value_threshold) 
-                and (self_highest_prob >= potOdds().potEquity(current_bet))):
+            if ((opponent_hand_value - self_hand_value <= (value_threshold / 2)) 
+                 and (self_highest_prob >= potOdds().potEquity(current_bet))):
+                return (BetType.RAISE, current_bet + big_blind)
+            elif ((opponent_hand_value - self_hand_value <= (value_threshold * 1.5)) 
+                  and (self_highest_prob >= potOdds().potEquity(current_bet))):
                 return (BetType.CALL, current_bet)
             else:
                 return (BetType.FOLD, 0)
@@ -95,10 +98,10 @@ class BetStrat:
     
         return (BetType.FOLD, -1)
 
-class BigBlindCallStrat(BetStrat):
+class ConstantCallStrat(BetStrat):
     """
-    Simple strategy where the big blind is always called regardless
-    of cards, small blind, or round of betting
+    Simple strategy where the previous bet is always called 
+    regardless of money, bet, board, etc.
     """
     def __init__(self):
         super().__init__()
@@ -110,7 +113,7 @@ class BigBlindCallStrat(BetStrat):
                                     community_cards,
                                     player_name)
 
-        return (BetType.CALL, big_blind)
+        return (BetType.CALL, current_bet)
 
 # TODO: implement custom betting strategy for AI
 class ArguablyOptimalStrat(BetStrat):
@@ -129,7 +132,7 @@ class ArguablyOptimalStrat(BetStrat):
                              pocket_cards, community_cards, player_name)
         
         sim_cutoff = 500000 # arbitrary cutoff for number of hands to simulate, bigger the better but slower
-        value_threshold = 1 # acceptable difference in average hand values
+        value_threshold = 0.5 # acceptable difference in average hand values
         
         if current_bet != 0:
             if potOdds().autoProfit(current_bet, player_name):
@@ -160,7 +163,7 @@ class ArguablyOptimalStrat(BetStrat):
 if __name__ == "__main__":
     from poker import Game
     game = Game(5)
-    player = game.current_players[0][0]
+    player = game.current_players[0]
     game.deal()
     bet = player.makeBet(1, 2, 0, game.field)
     print("Pre flop bet: {}".format(bet))
