@@ -18,8 +18,8 @@ class PokerGUI:
         self.players_acted = {player: False for player in self.game.current_players} 
 
         self.create_widgets()
-        self.log(f"\nSmall Blind: {self.game.current_players[self.game.blind_position].getName()}")
-        self.log(f"Big Blind: {self.game.current_players[(self.game.blind_position + 1) % len(self.game.current_players)].getName()}\n")
+        self.log(f"\nSmall Blind: {self.game.sb_player.getName()}")
+        self.log(f"Big Blind: {self.game.bb_player.getName()}\n")
         self.update_display()
         self.play()
 
@@ -90,81 +90,82 @@ class PokerGUI:
             self.player_labels[i].config(text=f"{player.getName()} - ${player.getMoney()}")
 
     def update_display(self):
-        curr_player = self.game.current_players[self.game.current_turn]
+        curr_player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
+        if curr_player != 0:
+            if curr_player.is_agent == True:
+                for widget in self.button_frame.winfo_children():
+                    widget.pack_forget()
+                self.bet_entry.pack_forget()
+            else:
+                for widget in self.button_frame.winfo_children():
+                    widget.pack(side=tk.LEFT)
+                self.bet_entry.pack()
 
-        if curr_player.is_agent == True:
-            for widget in self.button_frame.winfo_children():
-                widget.pack_forget()
-            self.bet_entry.pack_forget()
-        else:
-            for widget in self.button_frame.winfo_children():
-                widget.pack(side=tk.LEFT)
-            self.bet_entry.pack()
+            # Clear the current community card images (and previously shown text)
+            for widget in self.community_cards_frame.winfo_children():
+                widget.destroy()
 
-        # Clear the current community card images (and previously shown text)
-        for widget in self.community_cards_frame.winfo_children():
-            widget.destroy()
+            # Display images of community cards
 
-        # Display images of community cards
+            for card in self.game.field:
+                img_path = f"pokerGame/images/{card}.png"  # Get the image path for the card
+                try:
+                    image = Image.open(img_path)
+                    image = image.resize((100, 140))  # Resize the image to fit in the GUI
+                    photo = ImageTk.PhotoImage(image)
 
-        for card in self.game.field:
-            img_path = f"pokerGame/images/{card}.png"  # Get the image path for the card
-            try:
-                image = Image.open(img_path)
-                image = image.resize((100, 140))  # Resize the image to fit in the GUI
-                photo = ImageTk.PhotoImage(image)
+                    card_label = tk.Label(self.community_cards_frame, image=photo)
+                    card_label.image = photo  # Keep a reference to the image object
+                    card_label.pack(side=tk.LEFT)
+                except FileNotFoundError:
+                    print(f"Image for {card} not found.")
 
-                card_label = tk.Label(self.community_cards_frame, image=photo)
-                card_label.image = photo  # Keep a reference to the image object
-                card_label.pack(side=tk.LEFT)
-            except FileNotFoundError:
-                print(f"Image for {card} not found.")
+            self.update_money()
 
-        self.update_money()
+            for widget in self.pocket_cards_frame.winfo_children():
+                widget.destroy()
 
-        for widget in self.pocket_cards_frame.winfo_children():
-            widget.destroy()
+            for card in self.real_player.pocket_cards:
+                img_path = f"pokerGame/images/{card}.png"  # Get the image path for the card
+                try:
+                    image = Image.open(img_path)
+                    image = image.resize((100, 140))  # Resize the image to fit in the GUI
+                    photo = ImageTk.PhotoImage(image)
 
-        for card in self.real_player.pocket_cards:
-            img_path = f"pokerGame/images/{card}.png"  # Get the image path for the card
-            try:
-                image = Image.open(img_path)
-                image = image.resize((100, 140))  # Resize the image to fit in the GUI
-                photo = ImageTk.PhotoImage(image)
-
-                card_label = tk.Label(self.pocket_cards_frame, image=photo)
-                card_label.image = photo  # Keep a reference to the image object
-                card_label.pack(side=tk.LEFT)
-            except FileNotFoundError:
-                print(f"Image for {card} not found.")
+                    card_label = tk.Label(self.pocket_cards_frame, image=photo)
+                    card_label.image = photo  # Keep a reference to the image object
+                    card_label.pack(side=tk.LEFT)
+                except FileNotFoundError:
+                    print(f"Image for {card} not found.")
 
     def check(self):
-        curr_player = self.game.current_players[self.game.current_turn]
+        curr_player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
         amount = self.game.check(curr_player)
         if amount == 0:
-            self.log(f"{self.game.current_players[self.game.current_turn].getName()} checked.")
+            self.log(f"{curr_player.getName()} checked.")
         else:
-            self.log(f"{self.game.current_players[self.game.current_turn].getName()} called for {amount}.")
+            self.log(f"{curr_player.getName()} called for {amount}.")
         self.game.current_turn = (self.game.current_turn + 1) % len(self.game.current_players)
         self.players_acted[curr_player] = True
         self.update_display()
     
     def make_bet(self):
-        max_bet = min(player.getMoney() for player in self.game.players)
+        max_bet = min([(player.getMoney() + player.getBet()) for player in self.game.current_players if player != 0])
+        print(max_bet)
         try:
-            curr_player = self.game.current_players[self.game.current_turn]
+            curr_player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
             amount = int(self.bet_entry.get())
             if amount <= curr_player.money:
                 if amount <= max_bet:
                     if amount - self.game.current_bet >= self.game.big_blind_amount:
-                        print(self.game.current_players[self.game.current_turn].getName())
-                        self.game.current_players[self.game.current_turn]._bet(amount)
-                        self.log(f"{self.game.current_players[self.game.current_turn].getName()} bet ${amount}.")
+                        print(curr_player.getName())
+                        curr_player._bet(amount)
+                        self.log(f"{curr_player.getName()} bet ${amount}.")
                         self.game.current_turn = (self.game.current_turn + 1) % len(self.game.current_players)
                         self.game.current_pot += amount
-                        self.game.current_bet = amount
+                        self.game.current_bet = curr_player.getBet()
                         self.update_display()
-                        self.players_acted = {player: False for player in self.game.current_players} 
+                        self.players_acted = {player: False for player in self.game.current_players if player != 0} 
                         self.players_acted[curr_player] = True
                     else:
                         messagebox.showerror("Invalid Input", "You can only raise by at least the big blind")
@@ -176,8 +177,8 @@ class PokerGUI:
             messagebox.showerror("Invalid Input", "Enter a valid number.")
     
     def fold(self):
-        curr_player = self.game.current_players[self.game.current_turn]
-        self.log(f"{self.game.current_players[self.game.current_turn].getName()} folded.")
+        curr_player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
+        self.log(f"{curr_player.getName()} folded.")
         self.game.fold(self.game.current_turn)
         self.game.current_turn = (self.game.current_turn) % len(self.game.current_players)
         self.players_acted[curr_player] = True
@@ -194,20 +195,21 @@ class PokerGUI:
     def play_again(self):
         self.continue_button.destroy()
         self.game.reset_game()
-        if len(self.game.current_players) <= 1:
+        if self.game.currnum_players <= 1:
             self.log("\n\n\n\n\n\n\n\n\n\n\n\n\nNot enough players to continue.")
             return
-        self.players_acted = {player: False for player in self.game.current_players} 
+        self.players_acted = {player: False for player in self.game.current_players if player != 0} 
         self.winner.set(f"")
         self.log("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nStarting New Round...")
-        self.log(f"Small Blind: {self.game.current_players[self.game.blind_position].getName()}")
-        self.log(f"Big Blind: {self.game.current_players[(self.game.blind_position + 1) % len(self.game.current_players)].getName()}")
+        self.log(f"Small Blind: {self.game.sb_player.getName()}")
+        self.log(f"Big Blind: {self.game.bb_player.getName()}")
         self.update_display()
         self.play()
 
     def game_over(self, winners : list[Player]):
         for player in self.game.current_players:
-            self.log(f'\n{player.print_cards()}')
+            if player != 0:
+                self.log(f'\n{player.print_cards()}')
         
         for winner in winners:
             self.log(f"\nRound won by {winner.getName()}")
@@ -226,39 +228,54 @@ class PokerGUI:
 
 
     def play(self):
-            if len(self.game.current_players) <= 1:
-                #print(self.game.current_players[0])
+
+            if self.game.currnum_players <= 1:
+                print(self.game.current_players[0])
                 self.players_acted = {player: False for player in self.game.players} 
-                self.game_over(self.game.current_players[0])
-                return
-
-            if False not in self.players_acted.values() and len(self.players_acted.values()) > 1:
                 for player in self.game.current_players:
-                    player.bet = 0
-                self.players_acted = {player: False for player in self.game.current_players} 
-                if self.game.game_state == 0:
-                    self.game.flop()
-                elif self.game.game_state == 1:
-                    self.game.turn()
-                elif self.game.game_state == 2:
-                    self.game.river()
-                else:
-                    self.game_over(self.game.showdown())
-                    return
-
-            self.update_display()
-            if len(self.game.current_players) == 1:
-                return  # The game is over, stop execution
-
-            curr_player = self.game.current_players[self.game.current_turn]
+                    if player != 0:
+                        self.game_over(player)
+                        return
+                return
             
-            # If the current player is a bot, use a delay before making their move
-            if curr_player.is_agent:
-                # After CPU move is complete, call play again
-                self.root.after(1000, self.cpu_move)
+            curr_player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
+
+            if curr_player != 0:
+                if False not in self.players_acted.values() and len(self.players_acted.values()) > 1:
+                    for player in self.game.current_players:
+                        if player != 0:
+                            player.clearBet()
+                    self.players_acted = {player: False for player in self.game.current_players if player != 0} 
+                    if self.game.game_state == 0:
+                        self.game.flop()
+                    elif self.game.game_state == 1:
+                        self.game.turn()
+                    elif self.game.game_state == 2:
+                        self.game.river()
+                    else:
+                        self.game_over(self.game.showdown())
+                        return
+
+                self.update_display()
+                if self.game.currnum_players == 1:
+                    return  # The game is over, stop execution
+
+                curr_player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
+                if curr_player != 0:
+                # If the current player is a bot, use a delay before making their move
+                    if curr_player.is_agent:
+                        # After CPU move is complete, call play again
+                        self.root.after(100, self.cpu_move)
+                    else:
+                        # If it's not a bot's turn, continue the game
+                        self.root.after(100, self.play)
+                else:
+                    self.game.current_turn += 1
+                    self.root.after(100, self.play)
             else:
-                # If it's not a bot's turn, continue the game
-                self.root.after(1000, self.play)
+                self.game.current_turn += 1
+                self.root.after(100, self.play)
+
 
 
 if __name__ == "__main__":

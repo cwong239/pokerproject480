@@ -94,7 +94,7 @@ class Player:
         if self.money < amount:
             bet_amount = self.money
 
-        self.bet = bet_amount
+        self.bet += bet_amount
         self.money -= bet_amount
         return self.bet
     
