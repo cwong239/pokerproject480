@@ -1,7 +1,7 @@
 from player import Player as game_player
 from card import Card, Suit, Rank
 from handStrategy import BestHandStrat
-from betStrategy import ConstantCallStrat, ArguablyOptimalStrat
+from betStrategy import RandomStrat, ArguablyOptimalStrat
 from random import shuffle
 from collections import deque
 from handBuilder import HandVal
@@ -30,8 +30,8 @@ class Game:
         if player_count > 22 or player_count < 1:
             raise ValueError("Player count must be between 1 and 22")
         
-        self.players = [game_player("player " + str(x+1), 800, BestHandStrat(), ConstantCallStrat()) for x in range(player_count)]
-        self.players += [game_player("call agent " + str(x+1), 800, BestHandStrat(), ConstantCallStrat(), is_agent=True) for x in range(int(bot_count-1))]
+        self.players = [game_player("player " + str(x+1), 800, BestHandStrat(), RandomStrat()) for x in range(player_count)]
+        self.players += [game_player("random agent " + str(x+1), 800, BestHandStrat(), RandomStrat(), is_agent=True) for x in range(int(bot_count-1))]
         self.players += [game_player("optimal agent " + str(x+1), 800, BestHandStrat(), ArguablyOptimalStrat(), is_agent=True) for x in range(1)]
         # set the players to agents somewhere here by setting "player".is_agent to True
         self.game_state = 0

@@ -3,13 +3,14 @@ from enum import IntEnum
 from oddsForPot import potOdds
 from probabilitySim import ProbabilitySim
 from copy import deepcopy
+from random import randint
 
 class BetType(IntEnum):
     FOLD = 0
     BET = 1
     CHECK = 2
-    CALL = 3
-    RAISE = 4
+    RAISE = 3
+    CALL = 4
 
 class BetStrat:
     """
@@ -98,10 +99,9 @@ class BetStrat:
     
         return (BetType.FOLD, -1)
 
-class ConstantCallStrat(BetStrat):
+class RandomStrat(BetStrat):
     """
-    Simple strategy where the previous bet is always called 
-    regardless of money, bet, board, etc.
+    Entirely random betting
     """
     def __init__(self):
         super().__init__()
@@ -113,7 +113,24 @@ class ConstantCallStrat(BetStrat):
                                     community_cards,
                                     player_name)
 
-        return (BetType.CALL, current_bet)
+        bet = -1
+        if current_bet == 0:
+            bet = randint(1, 2)
+        else:
+            bet = randint(3, 4)
+
+        # ~8% fold chance
+        if randint(1, 12) == 1:
+            return (BetType.FOLD, pocket_cards)
+        
+        if bet == BetType.BET.value:
+            return (BetType.BET, big_blind)
+        elif bet == BetType.CHECK.value:
+            return (BetType.CHECK, 0)
+        elif bet == BetType.RAISE.value:
+            return (BetType.RAISE, current_bet + big_blind)
+        else: # must be a call
+            return (BetType.CALL, current_bet)
 
 # TODO: implement custom betting strategy for AI
 class ArguablyOptimalStrat(BetStrat):
@@ -139,26 +156,10 @@ class ArguablyOptimalStrat(BetStrat):
                 # auto win, so raise to the big blind
                 return (BetType.RAISE, big_blind)
         
-        if len(community_cards) == 0:
-            # pre-flop, raise to big blind
-            return self.probsToBet(pocket_cards, community_cards, 
-                                   current_bet, value_threshold, 
-                                   big_blind, sim_cutoff)
-        elif len(community_cards) == 3:
-            # post-flop, raise to big blind
-            return self.probsToBet(pocket_cards, community_cards,
-                                   current_bet, value_threshold,
-                                   big_blind, sim_cutoff)
-        elif len(community_cards) == 4:
-            # turn, raise to twice big blind
-            return self.probsToBet(pocket_cards, community_cards,
-                                   current_bet, value_threshold,
-                                   big_blind * 2)
-        else:
-            # river, raise to twice big blind
-            return self.probsToBet(pocket_cards, community_cards,
-                                   current_bet, value_threshold,
-                                   big_blind * 2)
+        # get probabilites from simulation
+        return self.probsToBet(pocket_cards, community_cards, 
+                                current_bet, value_threshold, 
+                                big_blind, sim_cutoff)
 
 if __name__ == "__main__":
     from poker import Game

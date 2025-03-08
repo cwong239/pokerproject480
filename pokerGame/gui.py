@@ -274,7 +274,7 @@ class PokerGUI:
                 self.players_acted = {player: False for player in self.game.players} 
                 for player in self.game.current_players:
                     if player != 0:
-                        self.game_over(player)
+                        self.game_over([player])
                         return
                 return
             
