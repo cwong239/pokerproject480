@@ -161,6 +161,8 @@ class PokerGUI:
                     if amount - self.game.current_bet >= self.game.big_blind_amount:
                         curr_player._bet(amount)
                         self.cpuBet(amount)
+                        self.players_acted = {player: False for player in self.game.current_players if player != 0} 
+                        self.players_acted[curr_player] = True
                     else:
                         messagebox.showerror("Invalid Input", "You can only raise by at least the big blind")
                 else:
@@ -186,7 +188,6 @@ class PokerGUI:
         self.game.current_pot += amount
         self.game.current_bet = curr_player.getBet()
         self.update_display()
-        self.players_acted[curr_player] = True
 
     def raiseBet(self, raise_amount : int):
         curr_player : Player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
@@ -196,6 +197,7 @@ class PokerGUI:
         self.game.current_pot += raise_amount
         self.game.current_bet = curr_player.getBet()
         self.update_display()
+        self.players_acted = {player: False for player in self.game.current_players if player != 0} 
         self.players_acted[curr_player] = True
 
     def callBet(self, call_difference : int):
@@ -231,6 +233,9 @@ class PokerGUI:
             self.raiseBet(bet_result[1])
         else: # must be a call
             self.callBet(bet_result[1])
+        for key in self.players_acted:
+            if key != 0:
+                print(key.getName(), self.players_acted[key])
 
     def play_again(self):
         self.continue_button.destroy()
@@ -268,7 +273,6 @@ class PokerGUI:
 
 
     def play(self):
-
             if self.game.currnum_players <= 1:
                 print(self.game.current_players[0])
                 self.players_acted = {player: False for player in self.game.players} 
