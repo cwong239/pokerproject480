@@ -7,7 +7,7 @@ from betStrategy import BetType
 import time
 
 class PokerGUI:
-    def __init__(self, root, player_count=1, bot_count=4):
+    def __init__(self, root, player_count=1, bot_count=2):
         self.root = root
         self.root.title("Poker Game")
         
@@ -182,11 +182,12 @@ class PokerGUI:
     
     def cpuBet(self, amount : int):
         curr_player : Player = self.game.current_players[self.game.current_turn % len(self.game.current_players)]
-        print(curr_player.getName())
         self.log(f"{curr_player.getName()} bet ${amount}.")
         self.game.current_turn = (self.game.current_turn + 1) % len(self.game.current_players)
         self.game.current_pot += amount
         self.game.current_bet = curr_player.getBet()
+        self.players_acted = {player: False for player in self.game.current_players if player != 0}
+        self.players_acted[curr_player] = True
         self.update_display()
 
     def raiseBet(self, raise_amount : int):
@@ -236,6 +237,7 @@ class PokerGUI:
         for key in self.players_acted:
             if key != 0:
                 print(key.getName(), self.players_acted[key])
+        print('')
 
     def play_again(self):
         self.continue_button.destroy()

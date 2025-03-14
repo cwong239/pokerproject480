@@ -117,7 +117,7 @@ class RandomStrat(BetStrat):
         if current_bet == 0:
             bet = randint(1, 2)
         else:
-            bet = randint(3, 4)
+            bet = randint(3, 8)
 
         # ~8% fold chance
         if randint(1, 12) == 1:
